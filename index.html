@@ -1,0 +1,1024 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
+<meta name="theme-color" content="#0f172a">
+<title>Курьер — учёт</title>
+<!-- Скрипт Telegram Mini Apps -->
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{
+  --bg:#0f172a; --card:#1e293b; --card2:#334155; --text:#e2e8f0; --muted:#94a3b8;
+  --accent:#facc15; --green:#22c55e; --red:#ef4444; --blue:#3b82f6; --purple:#a855f7; --orange:#f97316;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:16px}
+body{padding-bottom:90px}
+header{position:sticky;top:0;z-index:10;background:#0f172a;border-bottom:1px solid var(--card2);padding:12px 16px}
+header h1{margin:0;font-size:17px;font-weight:600}
+main{padding:16px}
+.view{display:none}
+.view.active{display:block}
+.card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px}
+label{display:block;font-size:13px;color:var(--muted);margin:8px 0 4px}
+input,select,textarea,button{font-family:inherit;font-size:16px}
+input,select,textarea{width:100%;padding:12px;background:var(--card2);color:var(--text);
+  border:1px solid transparent;border-radius:10px;outline:none;}
+select{appearance:none; -webkit-appearance:none;}
+input[type="date"], input[type="time"]{display: block; width: 100%; min-height: 46px;}
+textarea{resize:vertical;min-height:80px;font-family:monospace;font-size:13px}
+.btn{width:100%;padding:14px;border:none;border-radius:12px;font-weight:600;
+  background:var(--accent);color:#111827;margin-top:12px;cursor:pointer;transition:transform .05s}
+.btn:active{transform:scale(.97)}
+.btn.sec{background:var(--card2);color:var(--text)}
+.btn.danger{background:var(--red);color:#fff}
+.row{display:flex;gap:8px}
+.row>div{flex:1;min-width:0}
+.tabs{position:fixed;bottom:0;left:0;right:0;display:flex;background:#0b1220;
+  border-top:1px solid var(--card2);padding-bottom:env(safe-area-inset-bottom);z-index:20}
+.tabs button{flex:1;background:none;border:none;color:var(--muted);padding:6px 1px 8px;
+  font-size:9px;display:flex;flex-direction:column;align-items:center;gap:2px;cursor:pointer}
+.tabs button.active{color:var(--accent)}
+.tabs .ico{font-size:18px;line-height:1}
+.list{display:flex;flex-direction:column;gap:8px}
+.item{background:var(--card2);border-radius:10px;padding:10px 12px;
+  display:flex;justify-content:space-between;align-items:center;font-size:14px;gap:6px}
+.item .meta{color:var(--muted);font-size:12px;margin-top:2px}
+.item .amt{font-weight:700;white-space:nowrap}
+.item .amt.pos{color:var(--green)}
+.item .amt.neg{color:var(--red)}
+.item .del{background:none;border:none;color:var(--red);font-size:18px;padding:4px 8px;cursor:pointer}
+.stat{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--card2)}
+.stat:last-child{border-bottom:none}
+.stat .k{color:var(--muted);font-size:14px}
+.stat .v{font-weight:700}
+h2{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);margin:16px 0 8px;font-weight:600}
+.empty{text-align:center;color:var(--muted);padding:24px;font-size:14px}
+.quick{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.quick button{flex:1;min-width:52px;padding:10px 4px;background:var(--card2);color:var(--text);
+  border:none;border-radius:10px;font-size:14px;cursor:pointer}
+.quick button:active{background:var(--accent);color:#111827}
+
+.goal-card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px;border-left:4px solid var(--blue)}
+.goal-card.eda{border-left-color:var(--accent)}
+.goal-card.dost{border-left-color:var(--red)}
+.goal-card.inactive{opacity:0.5;filter:grayscale(1)}
+.goal-title{display:flex;justify-content:space-between;font-weight:700;margin-bottom:8px;font-size:15px}
+.progress-bg{background:var(--card2);height:8px;border-radius:4px;overflow:hidden;margin:8px 0}
+.progress-bar{height:100%;background:var(--green);width:0;transition:width .3s}
+.goal-stats{font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
+.badge{display:inline-block;padding:2px 6px;border-radius:4px;font-size:11px;background:var(--card2);color:var(--text)}
+
+/* Стили для рекомендаций */
+.rec-box{background:rgba(34,197,94,0.1);border:1px solid var(--green);padding:14px;border-radius:12px;margin-bottom:12px}
+.rec-title{font-size:12px;text-transform:uppercase;color:var(--green);font-weight:700;margin-bottom:6px}
+.rec-action{font-size:18px;font-weight:700;color:var(--text)}
+.rec-desc{font-size:13px;color:var(--muted);margin-top:6px}
+.side-quest{background:rgba(59,130,246,0.1);border:1px dashed var(--blue);padding:10px;border-radius:8px;margin-top:8px;font-size:12px;color:var(--blue)}
+
+/* Онлайн статистика за сегодня */
+.today-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.today-item{background:var(--card2);border-radius:10px;padding:12px}
+.today-item .label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.today-item .value{font-size:22px;font-weight:700;margin-top:4px}
+.today-item .sub{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* Сравнение периодов */
+.compare-card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px}
+.compare-title{font-weight:700;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center;font-size:14px}
+.compare-row{display:flex;justify-content:space-between;padding:8px 0;font-size:13px;border-bottom:1px solid var(--card2)}
+.compare-row:last-child{border-bottom:none}
+.delta-pos{color:var(--green);font-size:11px;font-weight:700}
+.delta-neg{color:var(--red);font-size:11px;font-weight:700}
+.delta-zero{color:var(--muted);font-size:11px}
+.old-val{color:var(--muted);font-size:11px;margin-left:4px}
+
+/* Анализ дней и магазинов */
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:13px}
+.bar-label{width:36px;color:var(--muted);font-size:11px;text-align:right}
+.bar-track{flex:1;background:var(--card2);height:20px;border-radius:4px;overflow:hidden;position:relative}
+.bar-fill{height:100%;background:var(--accent);opacity:0.7;position:absolute;left:0;top:0}
+.bar-val{position:absolute;right:6px;top:2px;font-size:11px;font-weight:700;z-index:2}
+.bar-day{font-weight:700;width:30px}
+
+/* Инфо-плашка */
+.info-plate{background:rgba(59,130,246,0.1);border:1px solid var(--blue);color:var(--blue);padding:10px;border-radius:8px;font-size:12px;margin-bottom:12px;line-height:1.4}
+
+/* Рекорды */
+.record-card{display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--card2);border-radius:10px;margin-bottom:8px}
+.record-info{display:flex;flex-direction:column}
+.record-title{font-size:12px;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
+.record-date{font-size:14px;font-weight:600}
+.record-amount{font-size:18px;font-weight:700;color:var(--accent)}
+
+/* Битва целей */
+.battle-card{background:var(--card2);border-radius:12px;padding:12px;margin-bottom:10px;border-left:4px solid var(--muted)}
+.battle-card.best{border-left-color:var(--green);background:rgba(34,197,94,0.1)}
+.battle-row{display:flex;justify-content:space-between;align-items:center}
+.battle-name{font-weight:700;font-size:15px}
+.battle-val{font-size:18px;font-weight:700}
+
+/* План на день */
+.daily-goal-card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px;border:2px solid var(--accent)}
+.daily-goal-top{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px}
+.daily-goal-title{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+.daily-goal-num{font-size:24px;font-weight:700;color:var(--accent)}
+.daily-goal-sub{font-size:12px;color:var(--muted);margin-top:8px}
+
+/* 7 дней */
+.trend-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px}
+.trend-day-name{width:30px;font-weight:700;color:var(--muted);font-size:12px}
+.trend-track{flex:1;background:var(--card2);height:24px;border-radius:4px;overflow:hidden;position:relative}
+.trend-fill{height:100%;background:var(--blue);opacity:0.6;position:absolute;left:0;top:0}
+.trend-val{position:absolute;right:6px;top:3px;font-size:12px;font-weight:700;z-index:2}
+
+/* Прогноз */
+.forecast-card{background:rgba(168,85,247,0.1);border:1px solid var(--purple);padding:14px;border-radius:12px;margin-bottom:12px}
+.forecast-title{font-size:12px;text-transform:uppercase;color:var(--purple);font-weight:700;margin-bottom:6px}
+.forecast-val{font-size:20px;font-weight:700;color:var(--text)}
+.forecast-desc{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4}
+</style>
+</head>
+<body>
+
+<header><h1>🚴 Курьер — учёт</h1></header>
+
+<main>
+  <!-- ДОХОДЫ -->
+  <section class="view active" id="view-income">
+    <div class="card">
+      <label>Дата</label>
+      <input type="date" id="inc-date">
+      <div class="row">
+        <div><label>Сервис</label><select id="inc-service" onchange="toggleX5Fields()"></select></div>
+        <div><label>Тип</label><select id="inc-type" onchange="toggleDeliveries()"></select></div>
+      </div>
+      <div id="x5-store-box" style="display:none; margin-top:8px">
+        <label>Магазин X5 (для аналитики)</label>
+        <select id="inc-store"></select>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div><label>Сумма (всего), ₽</label><input type="number" id="inc-amount" inputmode="decimal" placeholder="0" step="0.01"></div>
+        <div id="deliveries-box"><label>Вручений</label><input type="number" id="inc-deliveries" inputmode="numeric" value="1" min="1"></div>
+      </div>
+      <label>Заметка (необязательно)</label>
+      <input type="text" id="inc-note" placeholder="Например, № заказа">
+      <button class="btn" id="btn-add-income">+ Добавить доход</button>
+    </div>
+    <h2>Последние доходы</h2>
+    <div class="list" id="inc-list"></div>
+  </section>
+
+  <!-- РАСХОДЫ -->
+  <section class="view" id="view-expenses">
+    <div class="card">
+      <label>Дата</label>
+      <input type="date" id="exp-date">
+      <label>Категория</label>
+      <select id="exp-cat"></select>
+      <label>Сумма, ₽</label>
+      <input type="number" id="exp-amount" inputmode="decimal" placeholder="0" step="0.01">
+      <label>Заметка</label>
+      <input type="text" id="exp-note" placeholder="Необязательно">
+      <button class="btn" id="btn-add-exp">+ Добавить расход</button>
+    </div>
+    <h2>Последние расходы</h2>
+    <div class="list" id="exp-list"></div>
+  </section>
+
+  <!-- ЧАСЫ -->
+  <section class="view" id="view-hours">
+    <div class="info-plate">
+      💡 Часы, проведенные на слоте X5, считаются автоматически. Здесь указывай <b>общее время, отработанное на Яндексе (и других сервисах) вне слота</b>.
+    </div>
+    <div class="card">
+      <label>Дата</label>
+      <input type="date" id="hrs-date">
+      <label>Отработано часов (вне слота)</label>
+      <input type="number" id="hrs-value" inputmode="decimal" step="0.25" placeholder="Например, 3">
+      <div class="quick">
+        <button data-hrs="2">2ч</button>
+        <button data-hrs="4">4ч</button>
+        <button data-hrs="6">6ч</button>
+        <button data-hrs="8">8ч</button>
+        <button data-hrs="10">10ч</button>
+      </div>
+      <button class="btn" id="btn-add-hrs">💾 Сохранить часы</button>
+    </div>
+    <h2>Внесенные часы (вручную)</h2>
+    <div class="list" id="hrs-list"></div>
+  </section>
+
+  <!-- РАСПИСАНИЕ СМЕН -->
+  <section class="view" id="view-schedule">
+    <div class="card">
+      <label>Дата смены (Слот X5)</label>
+      <input type="date" id="sch-date">
+      <div class="row">
+        <div><label>Время с</label><input type="time" id="sch-time-start" value="09:00"></div>
+        <div><label>Время по</label><input type="time" id="sch-time-end" value="14:00"></div>
+      </div>
+      <label>Магазин</label>
+      <select id="sch-store"></select>
+      <button class="btn" id="btn-add-schedule">+ Забронировать слот X5</button>
+    </div>
+    <h2>Забронированные слоты</h2>
+    <div class="list" id="sch-list"></div>
+  </section>
+
+  <!-- СТАТИСТИКА -->
+  <section class="view" id="view-stats">
+    <h2>Сегодня (онлайн)</h2>
+    <div class="card" id="today-stats" style="padding:12px"></div>
+
+    <h2>План на день</h2>
+    <div id="daily-goal-block"></div>
+
+    <h2>Прогноз по слотам X5 (7 дней)</h2>
+    <div id="forecast-container"></div>
+
+    <h2>Динамика за 7 дней</h2>
+    <div class="card" id="trend-7-days"></div>
+
+    <h2>🏆 Твои рекорды</h2>
+    <div class="card" id="records-container"></div>
+
+    <h2>Цели vs X5: Что выгоднее?</h2>
+    <div class="card" id="goal-vs-slot"></div>
+
+    <h2>Анализ и планирование</h2>
+    <div class="card" id="agg-analysis"></div>
+
+    <h2>Прогресс по целям</h2>
+    <div id="goals-container"></div>
+
+    <h2>Статистика по дням недели</h2>
+    <div class="card" id="day-analysis"></div>
+
+    <h2>Анализ магазинов X5</h2>
+    <div class="card" id="store-analysis"></div>
+
+    <h2>Общая статистика</h2>
+    <div class="card">
+      <div class="stat"><span class="k">Доход (валовый)</span><span class="v" id="st-gross">0 ₽</span></div>
+      <div class="stat"><span class="k">Прочие расходы</span><span class="v" id="st-other">0 ₽</span></div>
+      <div class="stat"><span class="k" style="color:var(--red)">Налог (<span id="st-tax-percent">6</span>%)</span><span class="v" style="color:var(--red)" id="st-tax">0 ₽</span></div>
+      <div class="stat"><span class="k" style="color:var(--green); font-weight:700">Чистыми (на руки)</span><span class="v" style="color:var(--green); font-size:18px" id="st-clean">0 ₽</span></div>
+      <div class="stat"><span class="k">Заказы / Вручения / Часы</span><span class="v" id="st-orders">0 / 0 / 0ч</span></div>
+      <div class="stat"><span class="k" style="color:var(--accent); font-weight:700">Общая ставка в час</span><span class="v" style="color:var(--accent)" id="st-rate">0 ₽/ч</span></div>
+      <div class="stat"><span class="k">Средний доход за заказ</span><span class="v" id="st-avg">0 ₽</span></div>
+    </div>
+
+    <h2>Сравнение периодов</h2>
+    <div id="period-compare"></div>
+  </section>
+
+  <!-- НАСТРОЙКИ -->
+  <section class="view" id="view-settings">
+    <h2>Финансовые настройки</h2>
+    <div class="card">
+      <label>План на день (₽)</label>
+      <input type="number" id="set-daily-goal" inputmode="decimal" placeholder="Например, 5000">
+      <label>Налог самозанятого (%)</label>
+      <input type="number" id="set-tax-rate" inputmode="decimal" placeholder="6" value="6">
+      <button class="btn" id="btn-save-finance">Сохранить настройки</button>
+    </div>
+
+    <h2>Недельные цели (Яндекс)</h2>
+    <div class="card" style="border-top:3px solid var(--accent)">
+      <label style="color:var(--accent);font-weight:700;font-size:15px">🟡 Я.Еда</label>
+      <div class="row" style="margin-top:8px">
+        <div><label>Нужно вручений</label><input type="number" id="goal-eda-ord" placeholder="0"></div>
+        <div><label>Бонус, ₽</label><input type="number" id="goal-eda-bon" placeholder="0"></div>
+      </div>
+      <label>С какого числа</label>
+      <input type="date" id="goal-eda-start">
+      <label>По какое число</label>
+      <input type="date" id="goal-eda-end">
+      <label>Уже сделано до учёта (вручений)</label>
+      <input type="number" id="goal-eda-offset" placeholder="0">
+    </div>
+
+    <div class="card" style="border-top:3px solid var(--red)">
+      <label style="color:var(--red);font-weight:700;font-size:15px">🔴 Я.Доставка (недельная)</label>
+      <div class="row" style="margin-top:8px">
+        <div><label>Нужно вручений</label><input type="number" id="goal-dost-ord" placeholder="0"></div>
+        <div><label>Бонус, ₽</label><input type="number" id="goal-dost-bon" placeholder="0"></div>
+      </div>
+      <label>С какого числа</label>
+      <input type="date" id="goal-dost-start">
+      <label>По какое число</label>
+      <input type="date" id="goal-dost-end">
+      <label>Уже сделано до учёта (вручений)</label>
+      <input type="number" id="goal-dost-offset" placeholder="0">
+    </div>
+
+    <button class="btn" id="btn-save-goals">Сохранить недельные цели</button>
+
+    <h2>Бэкап</h2>
+    <div class="card">
+      <button class="btn sec" id="btn-export">📤 Скачать бэкап (.json)</button>
+      <button class="btn sec" id="btn-show-backup">📋 Показать код бэкапа</button>
+      <textarea id="backup-area" placeholder="Код бэкапа (сюда вставь для импорта)"></textarea>
+      <button class="btn sec" id="btn-import">📥 Импортировать из кода</button>
+      <input type="file" id="backup-file" accept=".json,application/json" style="display:none">
+      <button class="btn sec" id="btn-load-file">📁 Загрузить из файла</button>
+    </div>
+    <h2>Опасная зона</h2>
+    <div class="card">
+      <button class="btn danger" id="btn-clear">🗑 Удалить все данные</button>
+    </div>
+  </section>
+</main>
+
+<nav class="tabs">
+  <button data-tab="income" class="active"><span class="ico">💰</span>Доходы</button>
+  <button data-tab="expenses"><span class="ico">💸</span>Расходы</button>
+  <button data-tab="hours"><span class="ico">⏱️</span>Часы</button>
+  <button data-tab="schedule"><span class="ico">📅</span>Смены</button>
+  <button data-tab="stats"><span class="ico">📊</span>Статы</button>
+  <button data-tab="settings"><span class="ico">⚙️</span>Ещё</button>
+</nav>
+
+<script>
+'use strict';
+
+// ===== TELEGRAM MINI APP INIT =====
+if (window.Telegram && window.Telegram.WebApp) {
+  const tg = window.Telegram.WebApp;
+  tg.ready();
+  tg.expand(); // Разворачиваем на весь экран
+  tg.setHeaderColor('#0f172a'); // Красим шапку под наш дизайн
+  tg.setBackgroundColor('#0f172a');
+  tg.enableClosingConfirmation(); // Защита от случайного закрытия свайпом
+}
+
+const LS_KEY = 'courier_db_v6';
+const SERVICES = ['Я.Еда','Я.Доставка','X5 Слот','X5 Биржа','WB'];
+const INC_TYPES = ['Заказ','Бонус','Чаевые','Штраф'];
+const EXP_CATS = ['Аренда','Питание','Транспорт','Связь','Здоровье','Прочее'];
+const X5_STORES = ['Труда 10', 'Труда 64', 'Юбилейная 34', 'Беломорский 43', 'Ломоносова 108', 'Ломоносова 114'];
+const DOST_DAILY_TIERS = [{ orders: 5, bonus: 50 },{ orders: 8, bonus: 100 },{ orders: 11, bonus: 190 },{ orders: 14, bonus: 300 },{ orders: 17, bonus: 450 }];
+
+let db = loadDB();
+
+function defaultDB(){ 
+  return { 
+    income:[], expenses:[], hours:{}, schedule:[], 
+    settings: { dailyGoal: 0, taxRate: 6 },
+    goals: { 'Я.Еда': {target:0, bonus:0, start:'', end:'', offset:0}, 'Я.Доставка': {target:0, bonus:0, start:'', end:'', offset:0} } 
+  }; 
+}
+function normalize(d){
+  const normalizeGoal = (g) => ({ target: Number(g.target || g.orders || 0), bonus: Number(g.bonus || 0), start: g.start || '', end: g.end || '', offset: Number(g.offset || 0) });
+  let income = Array.isArray(d.income) ? d.income.map(it => ({...it, store: it.store || ''})) : [];
+  let schedule = Array.isArray(d.schedule) ? d.schedule.map(s => ({ id: s.id || uid(), date: s.date, startTime: s.startTime || s.time || '09:00', endTime: s.endTime || '14:00', service: s.service || 'X5 Слот', store: s.store || '' })) : [];
+  return {
+    income: income, expenses: Array.isArray(d.expenses)?d.expenses:[],
+    hours: (d.hours && typeof d.hours==='object' && !Array.isArray(d.hours))?d.hours:{},
+    schedule: schedule,
+    settings: Object.assign({ dailyGoal: 0, taxRate: 6 }, d.settings || {}),
+    goals: { 'Я.Еда': normalizeGoal(d.goals && d.goals['Я.Еда'] ? d.goals['Я.Еда'] : {}), 'Я.Доставка': normalizeGoal(d.goals && d.goals['Я.Доставка'] ? d.goals['Я.Доставка'] : {}) }
+  };
+}
+function loadDB(){
+  try{ 
+    const allKeys = ['courier_db_v6', 'courier_db_v5', 'courier_db_v4', 'courier_db_v3', 'courier_db_v2', 'courier_db_v1'];
+    for (let k of allKeys) {
+      let raw = localStorage.getItem(k);
+      if (raw) {
+        let parsed = normalize(JSON.parse(raw));
+        if (k !== 'courier_db_v6') localStorage.setItem('courier_db_v6', JSON.stringify(parsed));
+        return parsed;
+      }
+    }
+    return defaultDB(); 
+  } catch(e){ return defaultDB(); }
+}
+function saveDB(){ try{ localStorage.setItem(LS_KEY, JSON.stringify(db)); } catch(e){ toast('Ошибка сохранения: '+e.message); } }
+
+function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,7); }
+function todayStr(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function tomorrowStr(){ const d=new Date(); d.setDate(d.getDate()+1); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function nowTimeStr(){ const d=new Date(); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
+function datePart(ds){ const p=ds.split('-').map(Number); return new Date(p[0],p[1]-1,p[2]); }
+function fmtDate(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function addDays(ds, n){ const d=datePart(ds); d.setDate(d.getDate()+n); return fmtDate(d); }
+function getMonday(ds){ const d=datePart(ds); const day=(d.getDay()+6)%7; d.setDate(d.getDate()-day); return fmtDate(d); }
+function getSunday(ds){ return addDays(getMonday(ds), 6); }
+function getMonthStart(ds){ const d=datePart(ds); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01'; }
+function getMonthEnd(ds){ const d=datePart(ds); const last=new Date(d.getFullYear(), d.getMonth()+1, 0); return fmtDate(last); }
+function esc(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function weekdayRu(ds){ const p=ds.split('-').map(Number); const d=new Date(p[0],p[1]-1,p[2]); return ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][d.getDay()]; }
+
+let toastT=null;
+function toast(msg, ms=2000){
+  let el=document.getElementById('__toast');
+  if(!el){
+    el=document.createElement('div'); el.id='__toast';
+    el.style.cssText='position:fixed;left:50%;bottom:100px;transform:translateX(-50%);background:#334155;color:#fff;padding:10px 16px;border-radius:10px;font-size:14px;z-index:999;opacity:0;transition:opacity .2s;pointer-events:none;max-width:88vw;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,.4)';
+    document.body.appendChild(el);
+  }
+  el.textContent=msg; el.style.opacity='1'; clearTimeout(toastT); toastT=setTimeout(()=>el.style.opacity='0', ms);
+}
+
+window.toggleDeliveries = function() { document.getElementById('deliveries-box').style.display = (document.getElementById('inc-type').value === 'Заказ') ? 'block' : 'none'; }
+window.toggleX5Fields = function() { document.getElementById('x5-store-box').style.display = (document.getElementById('inc-service').value.startsWith('X5')) ? 'block' : 'none'; }
+
+document.querySelectorAll('.tabs button').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('.tabs button').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('view-'+b.dataset.tab).classList.add('active');
+    if(b.dataset.tab==='stats') renderStats();
+    if(b.dataset.tab==='income') renderIncomeList();
+    if(b.dataset.tab==='expenses') renderExpensesList();
+    if(b.dataset.tab==='hours') renderHoursList();
+    if(b.dataset.tab==='schedule') renderSchedule();
+    window.scrollTo(0,0);
+  };
+});
+
+/* ---------- render lists ---------- */
+function renderIncomeList(){
+  const el=document.getElementById('inc-list');
+  if(!db.income.length){ el.innerHTML='<div class="empty">Пока нет доходов</div>'; return; }
+  const sorted=[...db.income].sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+  el.innerHTML=sorted.slice(0,80).map(it=>{
+    const neg=it.amount<0;
+    const delivStr = (it.deliveries && it.deliveries > 1) ? ` · ${it.deliveries} вруч.` : '';
+    const storeStr = it.store ? ` · ${esc(it.store)}` : '';
+    return `<div class="item"><div><div>${esc(it.service)} · ${esc(it.type)}${delivStr}</div><div class="meta">${esc(it.date)}${storeStr}${it.note?' · '+esc(it.note):''}</div></div><div style="display:flex;align-items:center;gap:4px"><span class="amt ${neg?'neg':'pos'}">${neg?'':'+'}${it.amount} ₽</span><button class="del" data-del-income="${esc(it.id||'')}">✕</button></div></div>`;
+  }).join('');
+}
+
+function renderExpensesList(){
+  const el=document.getElementById('exp-list');
+  if(!db.expenses.length){ el.innerHTML='<div class="empty">Пока нет расходов</div>'; return; }
+  const sorted=[...db.expenses].sort((a,b)=> (b.date||'').localeCompare(a.date||''));
+  el.innerHTML=sorted.slice(0,80).map(it=>`<div class="item"><div><div>${esc(it.cat)}</div><div class="meta">${esc(it.date)}${it.note?' · '+esc(it.note):''}</div></div><div style="display:flex;align-items:center;gap:4px"><span class="amt neg">-${it.amount} ₽</span><button class="del" data-del-exp="${esc(it.id||'')}">✕</button></div></div>`).join('');
+}
+
+function renderHoursList(){
+  const el=document.getElementById('hrs-list');
+  const keys=Object.keys(db.hours).sort((a,b)=>b.localeCompare(a));
+  if(!keys.length){ el.innerHTML='<div class="empty">Нет записей</div>'; return; }
+  el.innerHTML=keys.map(d=>`<div class="item"><div><div>${esc(d)}</div><div class="meta">${weekdayRu(d)}</div></div><div style="display:flex;align-items:center;gap:4px"><span class="amt">${db.hours[d]} ч</span><button class="del" data-del-hour="${esc(d)}">✕</button></div></div>`).join('');
+}
+
+function renderSchedule(){
+  const el=document.getElementById('sch-list');
+  const today = todayStr();
+  const sorted = db.schedule.filter(s => s.date >= today).sort((a,b) => (a.date+' '+a.startTime).localeCompare(b.date+' '+b.startTime));
+  if(!sorted.length){ el.innerHTML='<div class="empty">Нет забронированных слотов</div>'; return; }
+  el.innerHTML=sorted.map(s=>`<div class="item"><div><div><b>${esc(s.startTime)} — ${esc(s.endTime)}</b></div><div class="meta">${esc(s.date)} (${weekdayRu(s.date)}) · ${esc(s.store||'Магазин не указан')}</div></div><div><button class="del" data-del-schedule="${esc(s.id)}" style="color:var(--red)">Отменить</button></div></div>`).join('');
+}
+
+/* ---------- period sums ---------- */
+function sumIncome(start, end){ let t=0; db.income.forEach(it=>{ if(it.date>=start && it.date<=end) t+=Number(it.amount)||0; }); return t; }
+function sumOrders(start, end){ let o=0, d=0; db.income.forEach(it=>{ if(it.type==='Заказ' && it.date>=start && it.date<=end){ o++; d += Number(it.deliveries)||1; } }); return {orders:o, deliveries:d}; }
+
+function getLiveHours(today) {
+  const manual = Number(db.hours[today]) || 0;
+  let slotHours = 0; let isLiveSlot = false; let activeSlotInfo = null;
+  const now = new Date(); const nowMins = now.getHours() * 60 + now.getMinutes();
+  
+  if (manual === 0) { // Если ввели вручную, слот не считаем, чтобы не дублировать
+    db.schedule.filter(s => s.date === today).forEach(s => {
+      const [sh, sm] = s.startTime.split(':').map(Number); const [eh, em] = s.endTime.split(':').map(Number);
+      const startMins = sh * 60 + sm; const endMins = eh * 60 + em;
+      
+      if (today < todayStr()) {
+         slotHours += (endMins - startMins) / 60;
+      } else if (today === todayStr()) {
+        if (nowMins > startMins) {
+          const workedUntil = Math.min(nowMins, endMins); const diffMins = workedUntil - startMins;
+          if (diffMins > 0) { slotHours += diffMins / 60; if (nowMins < endMins) { isLiveSlot = true; activeSlotInfo = s; } }
+        }
+      }
+    });
+  }
+  return { total: Math.round((manual + slotHours) * 10) / 10, manual, slotHours: Math.round(slotHours * 10) / 10, isLiveSlot, activeSlotInfo };
+}
+function sumHours(start, end){ let t=0; const dates = new Set([...Object.keys(db.hours), ...db.income.map(i=>i.date), ...db.schedule.map(s=>s.date)]); dates.forEach(d => { if(d && d>=start && d<=end) t += getLiveHours(d).total; }); return Math.round(t*10)/10; }
+
+/* ---------- FORECAST (X5 ONLY) ---------- */
+function renderForecast() {
+  const el = document.getElementById('forecast-container');
+  const today = todayStr();
+  const nextWeek = addDays(today, 7);
+  
+  const upcomingSlots = db.schedule.filter(s => s.date >= today && s.date <= nextWeek).sort((a,b)=>a.date.localeCompare(b.date));
+  
+  if (upcomingSlots.length === 0) {
+    el.innerHTML = `<div class="forecast-card" style="border-color:var(--muted);background:var(--card)"><div class="forecast-desc">На ближайшие 7 дней нет забронированных слотов X5.</div></div>`;
+    return;
+  }
+
+  let plannedHours = 0;
+  upcomingSlots.forEach(s => {
+    const [sh, sm] = s.startTime.split(':').map(Number); const [eh, em] = s.endTime.split(':').map(Number);
+    plannedHours += (eh * 60 + em - (sh * 60 + sm)) / 60;
+  });
+
+  let x5SlotIncome = 0;
+  db.income.forEach(it => { if(it.service === 'X5 Слот') x5SlotIncome += Number(it.amount)||0; });
+  
+  let x5SlotHoursTotal = 0;
+  db.schedule.forEach(s => {
+    if (s.date < today) { 
+        const [sh, sm] = s.startTime.split(':').map(Number); const [eh, em] = s.endTime.split(':').map(Number);
+        x5SlotHoursTotal += (eh * 60 + em - (sh * 60 + sm)) / 60;
+    }
+  });
+
+  let avgRate = x5SlotHoursTotal > 0 ? (x5SlotIncome / x5SlotHoursTotal) : 0;
+  
+  if (avgRate === 0) {
+    let grossAll = 0; db.income.forEach(it => grossAll += Number(it.amount) || 0);
+    let hoursAll = 0; const allDates = new Set([...Object.keys(db.hours), ...db.income.map(i=>i.date), ...db.schedule.map(s=>s.date)]);
+    allDates.forEach(d => { if(d) hoursAll += getLiveHours(d).total; });
+    avgRate = hoursAll > 0 ? (grossAll / hoursAll) : 0;
+  }
+
+  const expected = Math.round(plannedHours * avgRate);
+  
+  let slotsHtml = upcomingSlots.map(s => {
+    const isToday = s.date === today;
+    return `<div style="font-size:12px;display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
+      <span style="color:${isToday ? 'var(--accent)' : 'var(--text)'}">${isToday ? 'Сегодня' : s.date.substring(5)} (${weekdayRu(s.date)})</span>
+      <span>${s.startTime}-${s.endTime} · ${s.store ? s.store.split(' ')[0] : 'X5'}</span>
+    </div>`;
+  }).join('');
+
+  el.innerHTML = `
+    <div class="forecast-card">
+      <div class="forecast-title">Ожидаемый доход с X5 (7 дней)</div>
+      <div class="forecast-val">~ ${expected} ₽</div>
+      <div class="forecast-desc">У тебя <b>${Math.round(plannedHours)} часов</b> на слотах X5.<br>Средняя ставка слота: ${Math.round(avgRate)} ₽/ч.</div>
+      <div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
+        ${slotsHtml}
+      </div>
+    </div>
+  `;
+}
+
+/* ---------- other renderers ---------- */
+function renderDailyGoal(){
+  const today = todayStr();
+  const goal = Number(db.settings.dailyGoal) || 0;
+  const income = sumIncome(today, today);
+  const block = document.getElementById('daily-goal-block');
+
+  if (goal <= 0) {
+    block.innerHTML = `<div class="card" style="text-align:center; color:var(--muted); padding:20px">План на день не задан.<br>Установи его в разделе «Ещё».</div>`;
+    return;
+  }
+
+  const percent = Math.min(100, Math.round((income / goal) * 100));
+  const left = goal - income;
+  
+  const hoursInfo = getLiveHours(today);
+  const hourlyRate = hoursInfo.total > 0 ? (income / hoursInfo.total) : 0;
+  const avgOrder = sumOrders(today, today).orders > 0 ? (income / sumOrders(today, today).orders) : 0;
+
+  let estimate = '';
+  if (left > 0) {
+    if (hourlyRate > 0) estimate = `Осталось <b>${left} ₽</b>. Это ~${(left / hourlyRate).toFixed(1)}ч работы.`;
+    else if (avgOrder > 0) estimate = `Осталось <b>${left} ₽</b>. Это ~${Math.ceil(left / avgOrder)} вручений.`;
+    else estimate = `Осталось <b>${left} ₽</b>.`;
+  } else {
+    estimate = `<b style="color:var(--green)">Цель достигнута! 🎉</b> Ты заработал на ${income - goal} ₽ больше.`;
+  }
+
+  block.innerHTML = `
+    <div class="daily-goal-card">
+      <div class="daily-goal-top">
+        <span class="daily-goal-title">Цель на сегодня</span>
+        <span class="daily-goal-num">${Math.round(income)} / ${goal} ₽</span>
+      </div>
+      <div class="progress-bg" style="height:12px">
+        <div class="progress-bar" style="width:${percent}%; background:${percent >= 100 ? 'var(--green)' : 'var(--accent)'}"></div>
+      </div>
+      <div class="daily-goal-sub">${estimate}</div>
+    </div>
+  `;
+}
+
+function renderTrend7Days() {
+  const el = document.getElementById('trend-7-days');
+  const today = todayStr();
+  const days = [];
+  
+  for (let i = 6; i >= 0; i--) {
+    const d = addDays(today, -i);
+    days.push({ date: d, income: sumIncome(d, d) });
+  }
+
+  const max = Math.max(...days.map(d => d.income), 1);
+
+  let html = '';
+  days.forEach(d => {
+    const pct = (d.income / max) * 100;
+    const dayName = weekdayRu(d.date);
+    const isToday = d.date === today;
+    
+    html += `
+      <div class="trend-bar-row">
+        <span class="trend-day-name" style="color:${isToday ? 'var(--accent)' : 'var(--muted)'}">${dayName}</span>
+        <div class="trend-track">
+          <div class="trend-fill" style="width:${pct}%; background:${isToday ? 'var(--accent)' : 'var(--blue)'}"></div>
+          <div class="trend-val">${d.income > 0 ? Math.round(d.income)+' ₽' : '—'}</div>
+        </div>
+      </div>
+    `;
+  });
+
+  el.innerHTML = html;
+}
+
+function renderRecords() {
+  const el = document.getElementById('records-container');
+  if(!db.income.length) { el.innerHTML = '<div class="empty">Добавь доходы, чтобы увидеть рекорды</div>'; return; }
+
+  const daily = {}; const weekly = {}; const monthly = {};
+
+  db.income.forEach(it => {
+    if (!it.date) return;
+    const amt = Number(it.amount) || 0;
+    daily[it.date] = (daily[it.date] || 0) + amt;
+    const monday = getMonday(it.date);
+    weekly[monday] = (weekly[monday] || 0) + amt;
+    const month = it.date.substring(0, 7);
+    monthly[month] = (monthly[month] || 0) + amt;
+  });
+
+  const maxDaily = Object.entries(daily).sort((a,b)=>b[1]-a[1])[0];
+  const maxWeekly = Object.entries(weekly).sort((a,b)=>b[1]-a[1])[0];
+  const maxMonthly = Object.entries(monthly).sort((a,b)=>b[1]-a[1])[0];
+
+  let html = '';
+
+  if (maxDaily) html += `<div class="record-card"><div class="record-info"><span class="record-title">Лучший день</span><span class="record-date">${weekdayRu(maxDaily[0])}, ${maxDaily[0]}</span></div><span class="record-amount">${Math.round(maxDaily[1])} ₽</span></div>`;
+  if (maxWeekly) {
+    const weekEnd = getSunday(maxWeekly[0]);
+    html += `<div class="record-card"><div class="record-info"><span class="record-title">Лучшая неделя</span><span class="record-date">${maxWeekly[0]} — ${weekEnd}</span></div><span class="record-amount">${Math.round(maxWeekly[1])} ₽</span></div>`;
+  }
+  if (maxMonthly) {
+    const dateObj = new Date(maxMonthly[0] + '-02');
+    const monthName = dateObj.toLocaleString('ru-RU', { month: 'long' });
+    html += `<div class="record-card"><div class="record-info"><span class="record-title">Лучший месяц</span><span class="record-date" style="text-transform:capitalize">${monthName} ${dateObj.getFullYear()}</span></div><span class="record-amount">${Math.round(maxMonthly[1])} ₽</span></div>`;
+  }
+  el.innerHTML = html;
+}
+
+function renderGoalVsSlot() {
+  const today = todayStr();
+  const el = document.getElementById('goal-vs-slot');
+  let x5Base = 0, x5Delivs = 0;
+  db.income.forEach(it => { if (it.service.startsWith('X5') && it.type === 'Заказ') { x5Base += Number(it.amount) || 0; x5Delivs += Number(it.deliveries) || 1; } });
+  let x5Avg = x5Delivs > 0 ? (x5Base / x5Delivs) : 0;
+
+  let contenders = [];
+  ['Я.Еда', 'Я.Доставка'].forEach(service => {
+    const g = db.goals[service];
+    if (!g.target || !g.start || !g.end) return;
+    const prog = getWeeklyGoalProgress(service, today);
+    if (!prog || !prog.isActive) return;
+
+    let base = 0, delivs = 0;
+    db.income.forEach(it => { if (it.service === service && it.type === 'Заказ') { base += Number(it.amount) || 0; delivs += Number(it.deliveries) || 1; } });
+    let baseAvg = delivs > 0 ? (base / delivs) : 0;
+    let effAvg = baseAvg;
+    let bonusPerD = 0;
+
+    if (prog.left > 0) { bonusPerD = g.bonus / prog.left; effAvg += bonusPerD; }
+    contenders.push({ name: service, type: 'goal', base: baseAvg, bonus: bonusPerD, effAvg: effAvg, left: prog.left, isAchieved: prog.left === 0, color: service === 'Я.Еда' ? 'var(--accent)' : 'var(--red)' });
+  });
+
+  let html = '';
+  if (x5Avg > 0) {
+    html += `<div class="battle-card" style="border-left-color:var(--green)"><div class="battle-row"><span class="battle-name" style="color:var(--green)">🟢 X5 (Слот/Биржа)</span><span class="battle-val">~${Math.round(x5Avg)} ₽/вруч.</span></div><div style="font-size:11px;color:var(--muted);margin-top:4px">Средний чек без целей</div></div>`;
+  } else {
+    html += `<div class="battle-card"><div class="battle-row"><span class="battle-name">X5</span><span class="battle-val" style="color:var(--muted)">Нет данных</span></div></div>`;
+  }
+
+  let bestGoal = null; let maxGoalEff = 0;
+  contenders.forEach(c => {
+    if (c.effAvg > maxGoalEff) { maxGoalEff = c.effAvg; bestGoal = c; }
+    let warning = c.isAchieved ? `<span style="color:var(--green);font-size:11px">🎉 Цель достигнута!</span>` : `<div style="font-size:11px;color:var(--muted);margin-top:4px">База: ${Math.round(c.base)} ₽ + Бонус: ${Math.round(c.bonus)} ₽ (осталось ${c.left} вруч.)</div>`;
+    html += `<div class="battle-card ${c.effAvg > x5Avg ? 'best' : ''}" style="border-left-color:${c.color}"><div class="battle-row"><span class="battle-name" style="color:${c.color}">${c.name === 'Я.Еда' ? '🟡' : '🔴'} ${c.name}</span><span class="battle-val" style="color:${c.effAvg > x5Avg ? 'var(--green)' : 'var(--text)'}">~${Math.round(c.effAvg)} ₽/вруч.</span></div>${warning}</div>`;
+  });
+
+  if (contenders.length === 0) {
+    html += `<div class="empty" style="padding:10px">Нет активных целей для сравнения</div>`;
+  } else if (x5Avg > 0 && bestGoal) {
+    const diff = bestGoal.effAvg - x5Avg;
+    if (diff > 0) html += `<div style="margin-top:12px;padding:12px;background:rgba(34,197,94,0.15);border-radius:8px;border:1px solid var(--green);font-size:13px;line-height:1.4"><b>Вердикт:</b> Выгоднее добивать цель <b>${bestGoal.name}</b>.<br>Каждое вручение принесет на <b>${Math.round(diff)} ₽ больше</b>, чем на X5.</div>`;
+    else html += `<div style="margin-top:12px;padding:12px;background:rgba(239,68,68,0.15);border-radius:8px;border:1px solid var(--red);font-size:13px;line-height:1.4"><b>Вердикт:</b> Работа на X5 выгоднее.<br>Цели Яндекса дают на <b>${Math.abs(Math.round(diff))} ₽ меньше</b> за вручение.</div>`;
+  }
+  el.innerHTML = html;
+}
+
+function renderTodayStats(){
+  const today = todayStr(); const income = sumIncome(today, today); const { orders, deliveries } = sumOrders(today, today);
+  const hoursInfo = getLiveHours(today); const totalHours = hoursInfo.total;
+  const hourlyRate = totalHours > 0 ? Math.round(income / totalHours) : 0; const avgOrder = orders > 0 ? Math.round(income / orders) : 0;
+  let hoursSub = '';
+  if (hoursInfo.isLiveSlot && hoursInfo.activeSlotInfo) hoursSub = `<div class="sub" style="color:var(--green)">🟢 Слот до ${hoursInfo.activeSlotInfo.endTime}</div>`;
+  
+  document.getElementById('today-stats').innerHTML = `
+    <div class="today-grid">
+      <div class="today-item"><div class="label">Заработано</div><div class="value" style="color:var(--green)">${Math.round(income)} ₽</div></div>
+      <div class="today-item"><div class="label">Общая ставка в час</div><div class="value" style="color:var(--accent)">${hourlyRate} ₽</div></div>
+      <div class="today-item"><div class="label">Часов</div><div class="value">${totalHours}ч</div>${hoursSub}</div>
+      <div class="today-item"><div class="label">Заказы / Вручения</div><div class="value" style="font-size:18px">${orders} / ${deliveries}</div><div class="sub">~${avgOrder} ₽ за заказ</div></div>
+    </div>
+  `;
+}
+
+function renderPeriodCompare(){
+  const today = todayStr(); const yesterday = addDays(today, -1);
+  const thisWeekStart = getMonday(today), thisWeekEnd = getSunday(today); const lastWeekStart = addDays(thisWeekStart, -7), lastWeekEnd = addDays(thisWeekEnd, -7);
+  const thisMonthStart = getMonthStart(today), thisMonthEnd = getMonthEnd(today); const lastMonthDate = addDays(thisMonthStart, -1); const lastMonthStart = getMonthStart(lastMonthDate), lastMonthEnd = lastMonthDate;
+  
+  function buildRow(title, currStart, currEnd, prevStart, prevEnd) {
+    const cIncome = sumIncome(currStart, currEnd); const cHours = sumHours(currStart, currEnd); const cData = sumOrders(currStart, currEnd); const cRate = cHours > 0 ? Math.round(cIncome / cHours) : 0;
+    const pIncome = sumIncome(prevStart, prevEnd); const pHours = sumHours(prevStart, prevEnd); const pData = sumOrders(prevStart, prevEnd); const pRate = pHours > 0 ? Math.round(pIncome / pHours) : 0;
+    let deltaHtml = '<span class="delta-zero">—</span>';
+    if (pIncome > 0 && cIncome > 0) { const diff = cIncome - pIncome; const pct = Math.round(Math.abs(diff) / pIncome * 100); if (diff >= 0) deltaHtml = `<span class="delta-pos">↑ +${pct}%</span>`; else deltaHtml = `<span class="delta-neg">↓ -${pct}%</span>`; } else if (cIncome > 0 && pIncome === 0) deltaHtml = `<span class="delta-pos">новое</span>`;
+    return `<div class="compare-card"><div class="compare-title"><span>${title}</span>${deltaHtml}</div><div class="compare-row"><span style="color:var(--muted)">Доход</span><span><b>${Math.round(cIncome)} ₽</b><span class="old-val">(было ${Math.round(pIncome)})</span></span></div><div class="compare-row"><span style="color:var(--muted)">Часы (общие)</span><span><b>${cHours}ч</b><span class="old-val">(было ${pHours})</span></span></div><div class="compare-row"><span style="color:var(--muted)">Ставка / час</span><span><b>${cRate} ₽</b><span class="old-val">(было ${pRate})</span></span></div><div class="compare-row"><span style="color:var(--muted)">Заказы</span><span><b>${cData.orders}</b><span class="old-val">(было ${pData.orders})</span></span></div></div>`;
+  }
+  let html = '';
+  html += buildRow('📅 Сегодня vs Вчера', today, today, yesterday, yesterday);
+  html += buildRow('📊 Эта неделя vs Прошлая', thisWeekStart, thisWeekEnd, lastWeekStart, lastWeekEnd);
+  html += buildRow('🗓 Этот месяц vs Прошлый', thisMonthStart, thisMonthEnd, lastMonthStart, lastMonthEnd);
+  document.getElementById('period-compare').innerHTML = html;
+}
+
+function renderAdvancedAnalysis(){
+  const dayStats = {};
+  db.income.forEach(it => { if (it.date) { const d = datePart(it.date).getDay(); if (!dayStats[d]) dayStats[d] = { income: 0, hours: 0, dates: new Set() }; dayStats[d].income += Number(it.amount) || 0; dayStats[d].dates.add(it.date); } });
+  
+  const allDates = new Set([...db.income.map(i=>i.date), ...Object.keys(db.hours), ...db.schedule.map(s=>s.date)]);
+  allDates.forEach(dateStr => {
+    if (!dateStr) return;
+    const d = datePart(dateStr).getDay();
+    if (!dayStats[d]) dayStats[d] = { income: 0, hours: 0, dates: new Set() };
+    dayStats[d].hours += getLiveHours(dateStr).total;
+    if (dayStats[d].hours > 0) dayStats[d].dates.add(dateStr);
+  });
+
+  let dayHtml = ''; const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб']; let maxDayAvg = 0; const dayAverages = {};
+  for (let i = 0; i < 7; i++) { const s = dayStats[i]; if (s && s.dates.size > 0) { dayAverages[i] = s.income / s.dates.size; if (dayAverages[i] > maxDayAvg) maxDayAvg = dayAverages[i]; } else dayAverages[i] = 0; }
+  for (let i = 0; i < 7; i++) {
+    const s = dayStats[i];
+    const avg = dayAverages[i]; 
+    const pct = maxDayAvg > 0 ? (avg / maxDayAvg * 100) : 0; 
+    const isBest = (avg === maxDayAvg && avg > 0);
+    
+    let rateStr = '';
+    if (s && s.hours > 0) rateStr = ` (${Math.round(s.income/s.hours)} ₽/ч)`;
+    
+    dayHtml += `<div class="bar-row"><div class="bar-day" style="color:${isBest?'var(--green)':'var(--text)'}">${dayNames[i]}</div><div class="bar-track"><div class="bar-fill" style="width:${pct}%;background:${isBest?'var(--green)':'var(--accent)'}"></div><div class="bar-val">${avg > 0 ? Math.round(avg)+' ₽/день' + rateStr : '—'}</div></div></div>`;
+  }
+  document.getElementById('day-analysis').innerHTML = dayHtml || '<div class="empty">Нужно больше данных</div>';
+
+  const storeStats = {};
+  db.income.forEach(it => { if (it.service.startsWith('X5') && it.store && it.type === 'Заказ') { if (!storeStats[it.store]) storeStats[it.store] = { income: 0, delivs: 0 }; storeStats[it.store].income += Number(it.amount) || 0; storeStats[it.store].delivs += Number(it.deliveries) || 1; } });
+  const sortedStores = Object.keys(storeStats).map(name => { const s = storeStats[name]; return { name, avg: s.income / s.delivs, total: s.income, delivs: s.delivs }; }).sort((a, b) => b.avg - a.avg);
+  let storeHtml = '';
+  if (sortedStores.length === 0) storeHtml = '<div class="empty">Добавь заказы с указанием магазина X5, чтобы увидеть анализ.</div>';
+  else {
+    const maxStoreAvg = sortedStores[0].avg;
+    sortedStores.forEach((s, idx) => {
+      const pct = maxStoreAvg > 0 ? (s.avg / maxStoreAvg * 100) : 0; const isBest = (idx === 0);
+      storeHtml += `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span style="color:${isBest?'var(--green)':'var(--text)'}"><b>${esc(s.name)}</b></span><span style="color:var(--muted)">${Math.round(s.avg)} ₽/вруч.</span></div><div class="bar-track" style="height:8px;border-radius:2px"><div class="bar-fill" style="width:${pct}%;background:${isBest?'var(--green)':'var(--blue)'}"></div></div><div style="font-size:11px;color:var(--muted);margin-top:2px">Всего: ${s.delivs} вруч. на ${Math.round(s.total)} ₽</div></div>`;
+    });
+  }
+  document.getElementById('store-analysis').innerHTML = storeHtml;
+}
+
+function getWeeklyGoalProgress(service, targetDate) {
+  const g = db.goals[service]; if (!g.target || !g.start || !g.end) return null;
+  let periodDeliveries = 0; db.income.forEach(it => { if (it.service === service && it.type === 'Заказ' && it.date >= g.start && it.date <= g.end) periodDeliveries += (Number(it.deliveries) || 1); });
+  const totalDone = periodDeliveries + (Number(g.offset) || 0); const left = Math.max(0, g.target - totalDone); const isActive = (targetDate >= g.start && targetDate <= g.end);
+  return { totalDone, left, isActive, target: g.target, bonus: g.bonus };
+}
+
+function getDailyDostProgress(dateStr) {
+  let count = 0; db.income.forEach(it => { if (it.service === 'Я.Доставка' && it.type === 'Заказ' && it.date === dateStr) count += (Number(it.deliveries) || 1); });
+  let currentTier = { orders: 0, bonus: 0 }; let nextTier = null;
+  for (let t of DOST_DAILY_TIERS) { if (count >= t.orders) currentTier = t; else if (!nextTier) nextTier = t; }
+  return { count, currentTier, nextTier };
+}
+
+function renderStats(){
+  renderTodayStats(); 
+  renderDailyGoal();
+  renderForecast();
+  renderTrend7Days();
+  renderRecords();
+  renderGoalVsSlot();
+  renderPeriodCompare(); 
+  renderAdvancedAnalysis();
+  
+  let gross=0, totalOrders=0, totalDeliveries=0, otherExp=0;
+  const byService={}; SERVICES.forEach(s=>byService[s]={total:0, orders:0, deliveries:0, base:0, bonus:0});
+  db.income.forEach(it=>{
+    const amt = Number(it.amount)||0; const deliv = Number(it.deliveries)||1; gross += amt; const s=it.service;
+    if(!byService[s]) byService[s]={total:0, orders:0, deliveries:0, base:0, bonus:0};
+    byService[s].total += amt;
+    if(it.type==='Заказ'){ byService[s].orders++; byService[s].deliveries += deliv; byService[s].base += amt; totalOrders++; totalDeliveries += deliv; }
+    else if(it.type==='Бонус') byService[s].bonus += amt;
+  });
+  db.expenses.forEach(e=>otherExp += Number(e.amount)||0);
+  
+  let totalHoursOverall = 0; const allDates = new Set([...Object.keys(db.hours), ...db.income.map(i=>i.date), ...db.schedule.map(s=>s.date)]);
+  allDates.forEach(d => { if (d) totalHoursOverall += getLiveHours(d).total; });
+
+  const taxRate = Number(db.settings.taxRate) || 0;
+  const taxAmount = Math.round(gross * taxRate / 100);
+  const clean = gross - otherExp - taxAmount;
+
+  const set=(id,val)=>{ document.getElementById(id).textContent=val; };
+  set('st-gross', gross+' ₽'); 
+  set('st-other', otherExp+' ₽'); 
+  set('st-tax-percent', taxRate);
+  set('st-tax', taxAmount+' ₽');
+  set('st-clean', clean+' ₽');
+  
+  document.getElementById('st-clean').style.color = clean>=0 ? 'var(--green)' : 'var(--red)';
+  set('st-orders', `${totalOrders} / ${totalDeliveries} / ${Math.round(totalHoursOverall*10)/10}ч`);
+  set('st-rate', (totalHoursOverall>0?Math.round(clean/totalHoursOverall):0)+' ₽/ч');
+  set('st-avg', (totalOrders>0?Math.round(gross/totalOrders):0)+' ₽');
+
+  const aggEl = document.getElementById('agg-analysis');
+  if (totalDeliveries === 0) aggEl.innerHTML = '<div class="empty">Добавь заказы, чтобы увидеть анализ</div>';
+  else {
+    let slotData = byService['X5 Слот'] || {deliveries:0, base:0, bonus:0};
+    let slotAvg = slotData.deliveries > 0 ? (slotData.base + slotData.bonus) / slotData.deliveries : 0;
+    let birjaData = byService['X5 Биржа'] || {deliveries:0, base:0, bonus:0};
+    let birjaAvg = birjaData.deliveries > 0 ? (birjaData.base + birjaData.bonus) / birjaData.deliveries : 0;
+    const storeStats = {};
+    db.income.forEach(it => { if (it.service.startsWith('X5') && it.store && it.type === 'Заказ') { if (!storeStats[it.store]) storeStats[it.store] = { income: 0, delivs: 0 }; storeStats[it.store].income += Number(it.amount) || 0; storeStats[it.store].delivs += Number(it.deliveries) || 1; } });
+    let bestStore = null; let bestStoreAvg = 0;
+    Object.keys(storeStats).forEach(name => { const avg = storeStats[name].income / storeStats[name].delivs; if (avg > bestStoreAvg) { bestStoreAvg = avg; bestStore = name; } });
+    let nowTime = nowTimeStr(); let today = todayStr(); let tomorrow = tomorrowStr();
+    let activeSlotToday = db.schedule.find(s => s.date === today && s.endTime > nowTime); let hasSlotToday = !!activeSlotToday;
+    let slotTomorrow = db.schedule.find(s => s.date === tomorrow); let hasSlotTomorrow = !!slotTomorrow;
+    
+    let todayOpts = [];
+    if (hasSlotToday && slotAvg > 0) todayOpts.push({id: 'x5_slot', name: 'X5 Слот', effAvg: slotAvg, slotInfo: activeSlotToday});
+    let edaProg = getWeeklyGoalProgress('Я.Еда', today);
+    let edaBase = byService['Я.Еда'] && byService['Я.Еда'].deliveries > 0 ? (byService['Я.Еда'].base + byService['Я.Еда'].bonus) / byService['Я.Еда'].deliveries : 0;
+    let edaEff = edaBase; if (edaProg && edaProg.isActive && edaProg.left > 0) edaEff += edaProg.bonus / edaProg.left;
+    if (edaBase > 0 || (edaProg && edaProg.isActive)) todayOpts.push({id: 'eda', name: 'Я.Еда', effAvg: edaEff});
+    let dostBase = byService['Я.Доставка'] && byService['Я.Доставка'].deliveries > 0 ? (byService['Я.Доставка'].base + byService['Я.Доставка'].bonus) / byService['Я.Доставка'].deliveries : 0;
+    let dostDaily = getDailyDostProgress(today); let dostEff = dostBase;
+    if (dostDaily.nextTier && dostDaily.nextTier.orders > dostDaily.count) { let leftToNext = dostDaily.nextTier.orders - dostDaily.count; let bonusDiff = dostDaily.nextTier.bonus - dostDaily.currentTier.bonus; dostEff += bonusDiff / leftToNext; }
+    if (dostBase > 0 || dostDaily.count > 0) todayOpts.push({id: 'dost', name: 'Я.Доставка', effAvg: dostEff});
+    todayOpts.sort((a, b) => b.effAvg - a.effAvg); let bestToday = todayOpts[0];
+
+    let tomorrowOpts = [];
+    if (hasSlotTomorrow && slotAvg > 0) tomorrowOpts.push({id: 'x5_slot', name: 'X5 Слот', effAvg: slotAvg, slotInfo: slotTomorrow});
+    else if (slotAvg > 0) tomorrowOpts.push({id: 'x5_slot', name: 'X5 Слот (взять бронь)', effAvg: slotAvg});
+    let edaProgTom = getWeeklyGoalProgress('Я.Еда', tomorrow); let edaEffTom = edaBase;
+    if (edaProgTom && edaProgTom.isActive && edaProgTom.left > 0) edaEffTom += edaProgTom.bonus / edaProgTom.left;
+    if (edaBase > 0 || (edaProgTom && edaProgTom.isActive)) tomorrowOpts.push({id: 'eda', name: 'Я.Еда', effAvg: edaEffTom});
+    let dostEffTom = dostBase; if (DOST_DAILY_TIERS.length > 0 && dostBase > 0) dostEffTom += DOST_DAILY_TIERS[0].bonus / DOST_DAILY_TIERS[0].orders;
+    if (dostBase > 0) tomorrowOpts.push({id: 'dost', name: 'Я.Доставка', effAvg: dostEffTom});
+    tomorrowOpts.sort((a, b) => b.effAvg - a.effAvg); let bestTom = tomorrowOpts[0];
+
+    let html = '';
+    function renderRecCard(title, color, best, hasSlot, birjaAvg) {
+      if (!best) return '';
+      let slotMsg = '';
+      if (best.id === 'x5_slot') {
+        if (hasSlot && best.slotInfo) slotMsg = `<div style="font-size:12px;color:var(--green);margin-top:6px">✅ Слот: ${best.slotInfo.startTime} — ${best.slotInfo.endTime} (${esc(best.slotInfo.store||'Магазин')})</div>`;
+        else if (hasSlot) slotMsg = `<div style="font-size:12px;color:var(--green);margin-top:6px">✅ Слот забронирован</div>`;
+        else slotMsg = `<div style="font-size:12px;color:var(--red);margin-top:6px">⚠️ Слот не забронирован! Зайди в «Смены».</div>`;
+        if (bestStore) slotMsg += `<div style="font-size:12px;color:var(--purple);margin-top:4px">🏆 Лучший магазин: <b>${esc(bestStore)}</b> (~${Math.round(bestStoreAvg)} ₽/вруч.)</div>`;
+      }
+      let h = `<div class="rec-box" style="border-color:${color};background:${color}20"><div class="rec-title" style="color:${color}">${title}</div><div class="rec-action">${best.name}</div><div class="rec-desc">Доход за вручение: <b>~${Math.round(best.effAvg)} ₽</b></div>${slotMsg}</div>`;
+      if (birjaAvg > 0 && best.id !== 'x5_birja' && (best.effAvg - birjaAvg) < 100) h += `<div class="side-quest">💡 <b>Совет:</b> Включи X5 Биржу в фоне (~${Math.round(birjaAvg)} ₽/вруч).</div>`;
+      return h;
+    }
+    html += renderRecCard('На сегодня', 'var(--blue)', bestToday, hasSlotToday, birjaAvg);
+    if (bestTom) { html += `<div style="margin-top:16px"></div>`; html += renderRecCard('На завтра', 'var(--purple)', bestTom, hasSlotTomorrow, birjaAvg); }
+    aggEl.innerHTML = html;
+  }
+
+  const goalsCont = document.getElementById('goals-container'); let goalsHtml = '';
+  ['Я.Еда', 'Я.Доставка'].forEach(s => {
+    const g = db.goals[s]; if(!g.target) return;
+    const prog = getWeeklyGoalProgress(s, todayStr()); if(!prog || !prog.isActive) return;
+    const percent = Math.min(100, Math.round((prog.totalDone / g.target) * 100));
+    let advice = prog.left > 0 ? `Осталось: ${prog.left} вруч.` : `Недельная цель достигнута! 🎉`;
+    if (prog.left > 0) advice += `<div style="font-size:12px;color:var(--green);margin-top:6px">💡 Бонус +${g.bonus} ₽ (~${Math.round(g.bonus/prog.left)} ₽/вруч)</div>`;
+    goalsHtml += `<div class="goal-card ${s === 'Я.Еда' ? 'eda' : 'dost'}"><div class="goal-title"><span>${s} (Неделя)</span><span class="badge">${prog.totalDone} / ${g.target}</span></div><div class="progress-bg"><div class="progress-bar" style="width:${percent}%"></div></div><div class="goal-stats"><span>${advice}</span><span>${percent}%</span></div></div>`;
+  });
+  let dailyProg = getDailyDostProgress(todayStr());
+  let nextMsg = dailyProg.nextTier ? `До цели (${dailyProg.nextTier.orders} вруч. / +${dailyProg.nextTier.bonus} ₽): осталось ${dailyProg.nextTier.orders - dailyProg.count} вруч.` : `Максимальная дневная цель достигнута!`;
+  goalsHtml += `<div class="goal-card dost" style="border-left-color:var(--orange)"><div class="goal-title"><span>🔴 Я.Доставка (День)</span><span class="badge">${dailyProg.count} вруч.</span></div><div style="font-size:13px;margin-top:8px">${nextMsg}</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Текущий бонус: ${dailyProg.currentTier.bonus} ₽</div></div>`;
+  goalsCont.innerHTML = goalsHtml;
+}
+
+document.getElementById('btn-add-income').onclick=()=>{
+  const date=document.getElementById('inc-date').value||todayStr(); const service=document.getElementById('inc-service').value; const type=document.getElementById('inc-type').value; const store=document.getElementById('inc-store').value;
+  let amount=parseFloat(document.getElementById('inc-amount').value); let deliveries=1;
+  if(type === 'Заказ') deliveries = parseInt(document.getElementById('inc-deliveries').value) || 1;
+  const note=document.getElementById('inc-note').value.trim();
+  if(!amount || amount<=0) return toast('Введи сумму больше 0'); if(type==='Штраф') amount=-amount;
+  db.income.push({id:uid(), date, service, type, amount, deliveries, note, store}); saveDB();
+  document.getElementById('inc-amount').value=''; document.getElementById('inc-note').value=''; document.getElementById('inc-deliveries').value='1';
+  renderIncomeList(); renderStats(); toast('Добавлено: '+(amount<0?'-':'+')+Math.abs(amount)+' ₽');
+};
+
+document.getElementById('btn-add-exp').onclick=()=>{
+  const date=document.getElementById('exp-date').value||todayStr(); const cat=document.getElementById('exp-cat').value; const amount=parseFloat(document.getElementById('exp-amount').value); const note=document.getElementById('exp-note').value.trim();
+  if(!amount || amount<=0) return toast('Введи сумму больше 0');
+  db.expenses.push({id:uid(), date, cat, amount, note}); saveDB();
+  document.getElementById('exp-amount').value=''; document.getElementById('exp-note').value=''; renderExpensesList(); renderStats(); toast('Расход добавлен: -'+amount+' ₽');
+};
+
+document.querySelectorAll('[data-hrs]').forEach(b=>{ b.onclick=()=>{ document.getElementById('hrs-value').value=b.dataset.hrs; }; });
+document.getElementById('btn-add-hrs').onclick=()=>{
+  const date=document.getElementById('hrs-date').value||todayStr(); const h=parseFloat(document.getElementById('hrs-value').value);
+  if(!h || h<=0) return toast('Введи часы больше 0');
+  db.hours[date]=h; saveDB(); document.getElementById('hrs-value').value=''; renderHoursList(); renderStats(); toast('Сохранено: '+date+' — '+h+'ч');
+};
+
+document.getElementById('btn-add-schedule').onclick=()=>{
+  const date = document.getElementById('sch-date').value; const startTime = document.getElementById('sch-time-start').value; const endTime = document.getElementById('sch-time-end').value; const store = document.getElementById('sch-store').value;
+  if(!date || !startTime || !endTime) return toast('Укажи дату и время'); if(startTime >= endTime) return toast('Время "по" должно быть больше "с"');
+  db.schedule.push({id:uid(), date, startTime, endTime, service: 'X5 Слот', store}); saveDB(); renderSchedule(); renderStats(); toast('Слот добавлен!');
+};
+
+document.addEventListener('click', e=>{
+  const di=e.target.closest('[data-del-income]'); if(di){ if(!confirm('Удалить доход?')) return; db.income=db.income.filter(x=>x.id!==di.dataset.delIncome); saveDB(); renderIncomeList(); renderStats(); return; }
+  const de=e.target.closest('[data-del-exp]'); if(de){ if(!confirm('Удалить расход?')) return; db.expenses=db.expenses.filter(x=>x.id!==de.dataset.delExp); saveDB(); renderExpensesList(); renderStats(); return; }
+  const dh=e.target.closest('[data-del-hour]'); if(dh){ if(!confirm('Удалить часы за этот день?')) return; delete db.hours[dh.dataset.delHour]; saveDB(); renderHoursList(); renderStats(); return; }
+  const ds=e.target.closest('[data-del-schedule]'); if(ds){ if(!confirm('Отменить этот слот?')) return; db.schedule = db.schedule.filter(x=>x.id !== ds.dataset.delSchedule); saveDB(); renderSchedule(); renderStats(); return; }
+});
+
+document.getElementById('btn-save-finance').onclick=()=>{
+  db.settings.dailyGoal = parseFloat(document.getElementById('set-daily-goal').value) || 0;
+  db.settings.taxRate = parseFloat(document.getElementById('set-tax-rate').value) || 0;
+  saveDB(); renderStats(); toast('Настройки сохранены!');
+};
+
+document.getElementById('btn-save-goals').onclick=()=>{
+  db.goals['Я.Еда'] = { target: parseInt(document.getElementById('goal-eda-ord').value)||0, bonus: parseFloat(document.getElementById('goal-eda-bon').value)||0, start: document.getElementById('goal-eda-start').value, end: document.getElementById('goal-eda-end').value, offset: parseInt(document.getElementById('goal-eda-offset').value)||0 };
+  db.goals['Я.Доставка'] = { target: parseInt(document.getElementById('goal-dost-ord').value)||0, bonus: parseFloat(document.getElementById('goal-dost-bon').value)||0, start: document.getElementById('goal-dost-start').value, end: document.getElementById('goal-dost-end').value, offset: parseInt(document.getElementById('goal-dost-offset').value)||0 };
+  saveDB(); renderStats(); toast('Цели сохранены!');
+};
+
+document.getElementById('btn-export').onclick=()=>{
+  const blob=new Blob([JSON.stringify(db,null,2)], {type:'application/json'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='courier-backup-'+todayStr()+'.json';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),1000); toast('Файл скачан');
+};
+document.getElementById('btn-show-backup').onclick=()=>{ document.getElementById('backup-area').value=JSON.stringify(db); toast('Скопируй и сохрани'); };
+document.getElementById('btn-import').onclick=()=>{
+  const raw=document.getElementById('backup-area').value.trim(); if(!raw) return toast('Вставь код');
+  try{ const d=JSON.parse(raw); if(!d || typeof d!=='object' || !Array.isArray(d.income)) throw new Error('неверный формат');
+    if(!confirm('Заменить текущие данные?')) return; db=normalize(d); saveDB(); renderAll(); fillSettingsForm(); toast('Данные восстановлены!');
+  }catch(e){ toast('Ошибка: '+e.message); }
+};
+document.getElementById('btn-load-file').onclick=()=>document.getElementById('backup-file').click();
+document.getElementById('backup-file').onchange=e=>{
+  const file=e.target.files[0]; if(!file) return; const reader=new FileReader();
+  reader.onload=()=>{ try{ const d=JSON.parse(reader.result); if(!d || !Array.isArray(d.income)) throw new Error('неверный формат');
+      if(!confirm('Заменить текущие данные?')) return; db=normalize(d); saveDB(); renderAll(); fillSettingsForm(); toast('Данные загружены');
+  }catch(err){ toast('Ошибка: '+err.message); } }; reader.readAsText(file); e.target.value='';
+};
+document.getElementById('btn-clear').onclick=()=>{
+  if(!confirm('Удалить ВСЕ данные? Это необратимо!')) return; if(!confirm('Точно? Бэкап уже сделан?')) return;
+  db=defaultDB(); saveDB(); renderAll(); fillSettingsForm(); toast('Данные удалены');
+};
+
+function fillSelect(id, arr, addEmpty=false){
+  const el=document.getElementById(id); el.innerHTML='';
+  if(addEmpty) { const o=document.createElement('option'); o.value=''; o.textContent='— Не указан —'; el.appendChild(o); }
+  arr.forEach(v=>{ const o=document.createElement('option'); o.value=v; o.textContent=v; el.appendChild(o); });
+}
+function fillSettingsForm(){
+  document.getElementById('set-daily-goal').value = db.settings.dailyGoal || '';
+  document.getElementById('set-tax-rate').value = db.settings.taxRate !== undefined ? db.settings.taxRate : 6;
+  
+  const e = db.goals['Я.Еда']; document.getElementById('goal-eda-ord').value = e.target || ''; document.getElementById('goal-eda-bon').value = e.bonus || ''; document.getElementById('goal-eda-start').value = e.start || ''; document.getElementById('goal-eda-end').value = e.end || ''; document.getElementById('goal-eda-offset').value = e.offset || '';
+  const d = db.goals['Я.Доставка']; document.getElementById('goal-dost-ord').value = d.target || ''; document.getElementById('goal-dost-bon').value = d.bonus || ''; document.getElementById('goal-dost-start').value = d.start || ''; document.getElementById('goal-dost-end').value = d.end || ''; document.getElementById('goal-dost-offset').value = d.offset || '';
+}
+function renderAll(){ renderIncomeList(); renderExpensesList(); renderHoursList(); renderSchedule(); renderStats(); }
+
+(function init(){
+  fillSelect('inc-service', SERVICES); fillSelect('inc-type', INC_TYPES); fillSelect('exp-cat', EXP_CATS); fillSelect('inc-store', X5_STORES, true); fillSelect('sch-store', X5_STORES);
+  ['inc-date','exp-date','hrs-date','sch-date'].forEach(id=>document.getElementById(id).value=todayStr());
+  fillSettingsForm(); toggleDeliveries(); toggleX5Fields(); renderAll();
+})();
+</script>
+</body>
+</html>
