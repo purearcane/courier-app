@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1">
 <meta name="theme-color" content="#0f172a">
 <title>Курьер — учёт</title>
-<!-- Скрипт Telegram Mini Apps -->
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
 :root{
@@ -264,7 +263,7 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted
     <h2>Анализ и планирование</h2>
     <div class="card" id="agg-analysis"></div>
 
-    <h2>Прогресс по целям (Все)</h2>
+    <h2>Прогресс по целям</h2>
     <div id="goals-container"></div>
 
     <h2>Статистика по дням недели</h2>
@@ -404,7 +403,6 @@ const EXP_CATS = ['Аренда','Питание','Транспорт','Связ
 const X5_STORES = ['Труда 10', 'Труда 64', 'Юбилейная 34', 'Беломорский 43', 'Ломоносова 108', 'Ломоносова 114'];
 const DOST_DAILY_TIERS = [{ orders: 5, bonus: 50 },{ orders: 8, bonus: 100 },{ orders: 11, bonus: 190 },{ orders: 14, bonus: 300 },{ orders: 17, bonus: 450 }];
 
-// Цвета сервисов
 const COLORS = {
   'Я.Еда': 'var(--eda)',
   'Я.Доставка': 'var(--dost)',
@@ -602,53 +600,24 @@ function getLiveHours(today) {
 function sumHours(start, end){ let t=0; const dates = new Set([...Object.keys(db.hours), ...db.income.map(i=>i.date), ...db.schedule.map(s=>s.date)]); dates.forEach(d => { if(d && d>=start && d<=end) t += getLiveHours(d).total; }); return Math.round(t*10)/10; }
 
 /* ---------- GOALS LOGIC ---------- */
-function getCombinedGoalProgress(service, targetDate) {
-  const gYandex = db.goals[service];
-  const gPark = db.goals[service + '_Парк'];
+function getGoalProgress(goalKey, targetDate) {
+  const g = db.goals[goalKey];
+  if (!g || !g.target || !g.start || !g.end) return null;
   
-  let totalTarget = 0;
-  let totalBonus = 0;
-  let totalDone = 0;
-  let isActive = false;
+  const service = goalKey.replace('_Парк', '');
   
-  // Яндекс
-  if (gYandex && gYandex.target && gYandex.start && gYandex.end) {
-    if (targetDate >= gYandex.start && targetDate <= gYandex.end) {
-      isActive = true;
-      totalTarget += Number(gYandex.target);
-      totalBonus += Number(gYandex.bonus);
-      
-      let periodDeliveries = 0;
-      db.income.forEach(it => {
-        if (it.service === service && it.type === 'Заказ' && it.date >= gYandex.start && it.date <= gYandex.end) {
-          periodDeliveries += (Number(it.deliveries) || 1);
-        }
-      });
-      totalDone += periodDeliveries + (Number(gYandex.offset) || 0);
+  let periodDeliveries = 0;
+  db.income.forEach(it => {
+    if (it.service === service && it.type === 'Заказ' && it.date >= g.start && it.date <= g.end) {
+      periodDeliveries += (Number(it.deliveries) || 1);
     }
-  }
+  });
   
-  // Парк
-  if (gPark && gPark.target && gPark.start && gPark.end) {
-    if (targetDate >= gPark.start && targetDate <= gPark.end) {
-      isActive = true;
-      totalTarget += Number(gPark.target);
-      totalBonus += Number(gPark.bonus);
-      
-      let periodDeliveries = 0;
-      db.income.forEach(it => {
-        if (it.service === service && it.type === 'Заказ' && it.date >= gPark.start && it.date <= gPark.end) {
-          periodDeliveries += (Number(it.deliveries) || 1);
-        }
-      });
-      totalDone += periodDeliveries + (Number(gPark.offset) || 0);
-    }
-  }
+  const totalDone = periodDeliveries + (Number(g.offset) || 0);
+  const left = Math.max(0, g.target - totalDone);
+  const isActive = (targetDate >= g.start && targetDate <= g.end);
   
-  if (!isActive) return null;
-  
-  const left = Math.max(0, totalTarget - totalDone);
-  return { totalTarget, totalBonus, totalDone, left, isActive };
+  return { totalDone, left, isActive, target: g.target, bonus: g.bonus, start: g.start, end: g.end };
 }
 
 function getDailyDostProgress(dateStr) {
@@ -871,7 +840,6 @@ function renderPeriodCompare(){
 
 /* ---------- ADVANCED ANALYSIS (Days & Stores) ---------- */
 function renderAdvancedAnalysis(){
-  // 1. Статистика по дням недели (с долями сервисов)
   const dayData = {}; 
   const dayNames = ['Вс', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
   
@@ -943,7 +911,6 @@ function renderAdvancedAnalysis(){
   }
   document.getElementById('day-analysis').innerHTML = dayHtml || '<div class="empty">Нужно больше данных</div>';
 
-  // 2. Анализ магазинов X5
   const storeStats = {};
   db.income.forEach(it => { if (it.service.startsWith('X5') && it.store && it.type === 'Заказ') { if (!storeStats[it.store]) storeStats[it.store] = { income: 0, delivs: 0 }; storeStats[it.store].income += Number(it.amount) || 0; storeStats[it.store].delivs += Number(it.deliveries) || 1; } });
   const sortedStores = Object.keys(storeStats).map(name => { const s = storeStats[name]; return { name, avg: s.income / s.delivs, total: s.income, delivs: s.delivs }; }).sort((a, b) => b.avg - a.avg);
@@ -999,148 +966,122 @@ function renderStats(){
   set('st-rate', (totalHoursOverall>0?Math.round(clean/totalHoursOverall):0)+' ₽/ч');
   set('st-avg', (totalOrders>0?Math.round(gross/totalOrders):0)+' ₽');
 
-  // --- УМНЫЙ АНАЛИЗ И ПРОГНОЗ НА НЕДЕЛЮ ---
+  /* --- УМНЫЙ АНАЛИЗ НА НЕДЕЛЮ --- */
   const aggEl = document.getElementById('agg-analysis');
-  if (totalDeliveries === 0) aggEl.innerHTML = '<div class="empty">Добавь заказы, чтобы увидеть анализ</div>';
-  else {
-    let serviceStats = {};
-    SERVICES.forEach(s => {
-       let sIncome = 0, sDelivs = 0, sHours = 0;
-       db.income.forEach(it => { if(it.service === s) sIncome += Number(it.amount)||0; });
-       db.income.forEach(it => { if(it.service === s && it.type === 'Заказ') sDelivs += Number(it.deliveries)||1; });
-       
-       allDates.forEach(d => {
-         const dayIncomes = db.income.filter(i => i.date === d);
-         const dayTotal = dayIncomes.reduce((sum, i) => sum + (Number(i.amount)||0), 0);
-         const sDayIncome = dayIncomes.filter(i => i.service === s).reduce((sum, i) => sum + (Number(i.amount)||0), 0);
-         if (dayTotal > 0 && sDayIncome > 0) {
-           sHours += getLiveHours(d).total * (sDayIncome / dayTotal);
-         }
-       });
-
-       if (sIncome > 0 || sDelivs > 0) {
-         serviceStats[s] = { income: sIncome, delivs: sDelivs, hours: sHours, avgCheck: sDelivs > 0 ? sIncome / sDelivs : 0, hourlyRate: sHours > 0 ? sIncome / sHours : 0 };
-       }
+  if (totalDeliveries === 0) {
+    aggEl.innerHTML = '<div class="empty">Добавь заказы, чтобы увидеть анализ</div>';
+  } else {
+    // Собираем стату за последнюю неделю (7 дней)
+    const weekStart = addDays(todayStr(), -7);
+    const weekEnd = todayStr();
+    
+    // X5 Слоты
+    let x5WeekIncome = 0, x5WeekHours = 0;
+    db.income.forEach(it => {
+      if (it.service === 'X5 Слот' && it.date >= weekStart && it.date <= weekEnd) x5WeekIncome += Number(it.amount) || 0;
     });
-
-    let today = todayStr(); let tomorrow = tomorrowStr();
-    let slotToday = db.schedule.find(s => s.date === today && s.endTime > nowTimeStr());
-    let slotTomorrow = db.schedule.find(s => s.date === tomorrow);
-    
-    // === ПРОГНОЗ НА НЕДЕЛЮ ===
-    let edaCombined = getCombinedGoalProgress('Я.Еда', today);
-    let dostCombined = getCombinedGoalProgress('Я.Доставка', today);
-    
-    let avgX5SlotIncome = serviceStats['X5 Слот'] ? serviceStats['X5 Слот'].income / Math.max(1, db.schedule.filter(s => s.service === 'X5 Слот' && s.date < today).length) : 0;
-    let weeklyX5 = avgX5SlotIncome * 5; // Предполагаем 5 слотов в неделю
-    
-    let edaBase = serviceStats['Я.Еда'] ? serviceStats['Я.Еда'].avgCheck : 150; // фоллбэк
-    let dostBase = serviceStats['Я.Доставка'] ? serviceStats['Я.Доставка'].avgCheck : 150;
-    
-    let weeklyEda = 0;
-    if (edaCombined && edaCombined.left > 0) {
-       weeklyEda = (edaCombined.left * edaBase) + edaCombined.totalBonus; // сколько добрать
-    }
-    let weeklyDost = 0;
-    if (dostCombined && dostCombined.left > 0) {
-       weeklyDost = (dostCombined.left * dostBase) + dostCombined.totalBonus;
-    }
-
-    let bestWeekly = 'X5 Слоты';
-    let maxWeekly = weeklyX5;
-    if (weeklyEda > maxWeekly) { maxWeekly = weeklyEda; bestWeekly = 'Цели Я.Еда'; }
-    if (weeklyDost > maxWeekly) { maxWeekly = weeklyDost; bestWeekly = 'Цели Я.Доставка'; }
-
-    let html = `<div style="background:var(--card2); padding:14px; border-radius:12px; margin-bottom:12px; border:1px solid var(--birja)">
-      <div style="font-size:12px; color:var(--birja); text-transform:uppercase; font-weight:700; margin-bottom:8px;">🔮 План на неделю (что выгоднее)</div>
-      <div style="font-size:14px; margin-bottom:8px">🏆 Лучший вариант: <b>${bestWeekly}</b> (ожидаемо ~${Math.round(maxWeekly)} ₽)</div>
-      <div class="battle-sub" style="margin-bottom:4px"><span>🔴 X5 Слоты (5 смен)</span> <b>~${Math.round(weeklyX5)} ₽</b></div>
-      <div class="battle-sub" style="margin-bottom:4px"><span>🟡 Выполнить цели Еды</span> <b>~${Math.round(weeklyEda)} ₽</b></div>
-      <div class="battle-sub" style="margin-bottom:8px"><span>🟠 Выполнить цели Доставки</span> <b>~${Math.round(weeklyDost)} ₽</b></div>
-      <div style="font-size:11px; color:var(--muted); line-height:1.4;">* Расчет целей учитывает средний чек, количество оставшихся вручений и все бонусы (Яндекс + Парк).</div>
-    </div>`;
-
-    // === ПРОГНОЗ НА СЕГОДНЯ/ЗАВТРА ===
-    let todayOpts = [];
-    if (slotToday && serviceStats['X5 Слот']) todayOpts.push({ id: 'x5_slot', name: 'X5 Слот', effAvg: serviceStats['X5 Слот'].avgCheck, hourRate: serviceStats['X5 Слот'].hourlyRate, slotInfo: slotToday });
-    
-    let edaToday = serviceStats['Я.Еда'] || { avgCheck: 0, hourlyRate: 0 };
-    let edaEff = edaToday.avgCheck; let edaBonus = 0;
-    if (edaCombined && edaCombined.left > 0) { edaBonus = edaCombined.totalBonus / edaCombined.left; edaEff += edaBonus; }
-    if (edaToday.avgCheck > 0 || edaCombined) todayOpts.push({ id: 'eda', name: 'Я.Еда', effAvg: edaEff, hourRate: edaToday.hourlyRate, base: edaToday.avgCheck, bonus: edaBonus });
-
-    let dostStat = serviceStats['Я.Доставка'] || { avgCheck: 0, hourlyRate: 0 };
-    let dostDaily = getDailyDostProgress(today); let dostEff = dostStat.avgCheck; let dostBonus = 0;
-    if (dostDaily.nextTier && dostDaily.nextTier.orders > dostDaily.count) {
-       let leftToNext = dostDaily.nextTier.orders - dostDaily.count;
-       let bonusDiff = dostDaily.nextTier.bonus - dostDaily.currentTier.bonus;
-       dostBonus = bonusDiff / leftToNext; dostEff += dostBonus;
-    }
-    if (dostStat.avgCheck > 0 || dostDaily.count > 0) todayOpts.push({ id: 'dost', name: 'Я.Доставка', effAvg: dostEff, hourRate: dostStat.hourlyRate, base: dostStat.avgCheck, bonus: dostBonus });
-
-    todayOpts.sort((a, b) => b.hourRate - a.hourRate || b.effAvg - a.effAvg);
-    let bestToday = todayOpts[0];
-
-    let tomorrowOpts = [];
-    if (slotTomorrow && serviceStats['X5 Слот']) tomorrowOpts.push({ id: 'x5_slot', name: 'X5 Слот', effAvg: serviceStats['X5 Слот'].avgCheck, hourRate: serviceStats['X5 Слот'].hourlyRate, slotInfo: slotTomorrow });
-    
-    let edaTomorrow = serviceStats['Я.Еда'] || { avgCheck: 0, hourlyRate: 0 };
-    let edaEffT = edaTomorrow.avgCheck; let edaBonusT = 0;
-    if (edaCombined && edaCombined.left > 0) { edaBonusT = edaCombined.totalBonus / edaCombined.left; edaEffT += edaBonusT; }
-    if (edaTomorrow.avgCheck > 0 || edaCombined) tomorrowOpts.push({ id: 'eda', name: 'Я.Еда', effAvg: edaEffT, hourRate: edaTomorrow.hourlyRate, base: edaTomorrow.avgCheck, bonus: edaBonusT });
-
-    let dostStatT = serviceStats['Я.Доставка'] || { avgCheck: 0, hourlyRate: 0 };
-    let dostEffT = dostStatT.avgCheck; let dostBonusT = 0;
-    if (DOST_DAILY_TIERS.length > 0 && dostStatT.avgCheck > 0) {
-       dostBonusT = DOST_DAILY_TIERS[0].bonus / DOST_DAILY_TIERS[0].orders;
-       dostEffT += dostBonusT;
-    }
-    if (dostStatT.avgCheck > 0) tomorrowOpts.push({ id: 'dost', name: 'Я.Доставка', effAvg: dostEffT, hourRate: dostStatT.hourlyRate, base: dostStatT.avgCheck, bonus: dostBonusT });
-
-    tomorrowOpts.sort((a, b) => b.hourRate - a.hourRate || b.effAvg - a.effAvg);
-    let bestTom = tomorrowOpts[0];
-
-    function renderRecCard(title, color, best, hasSlot, birjaAvg) {
-      if (!best) return '';
-      let slotMsg = '';
-      if (best.id === 'x5_slot') {
-        if (hasSlot && best.slotInfo) slotMsg = `<div style="font-size:12px;color:var(--green);margin-top:6px">✅ Слот: ${best.slotInfo.startTime} — ${best.slotInfo.endTime} (${esc(best.slotInfo.store||'Магазин')})</div>`;
-        else if (hasSlot) slotMsg = `<div style="font-size:12px;color:var(--green);margin-top:6px">✅ Слот забронирован</div>`;
-        else slotMsg = `<div style="font-size:12px;color:var(--red);margin-top:6px">⚠️ Слот не забронирован! Зайди в «Смены».</div>`;
+    db.schedule.forEach(s => {
+      if (s.service === 'X5 Слот' && s.date >= weekStart && s.date <= weekEnd) {
+        const [sh, sm] = s.startTime.split(':').map(Number); const [eh, em] = s.endTime.split(':').map(Number);
+        x5WeekHours += (eh * 60 + em - (sh * 60 + sm)) / 60;
       }
-      let h = `<div class="rec-box" style="border-color:${color};background:${color}20"><div class="rec-title" style="color:${color}">${title}</div><div class="rec-action">${best.name}</div><div class="battle-sub" style="margin-top:8px; color:var(--text)"><div>Доход в час: <b style="color:var(--eda)">~${Math.round(best.hourRate || 0)} ₽/ч</b></div><div style="margin-top:4px">Средний чек: <b>~${Math.round(best.effAvg)} ₽</b> ${best.bonus > 0 ? `<span style="color:var(--green);font-size:11px">(вкл. бонус +${Math.round(best.bonus)})</span>` : ''}</div></div>${slotMsg}</div>`;
-      if (serviceStats['X5 Биржа'] && serviceStats['X5 Биржа'].avgCheck > 0 && best.id !== 'x5_birja' && (best.effAvg - serviceStats['X5 Биржа'].avgCheck) < 100) {
-        h += `<div class="side-quest">💡 <b>Совет:</b> Включи X5 Биржу в фоне (~${Math.round(serviceStats['X5 Биржа'].avgCheck)} ₽/вруч).</div>`;
-      }
-      return h;
-    }
+    });
+    let x5HourRate = x5WeekHours > 0 ? (x5WeekIncome / x5WeekHours) : 0;
 
-    html += renderRecCard('На сегодня (по ставке в час)', 'var(--birja)', bestToday, !!slotToday, serviceStats['X5 Биржа']?.avgCheck);
-    if (bestTom) { html += `<div style="margin-top:16px"></div>`; html += renderRecCard('На завтра (по ставке в час)', 'var(--wb)', bestTom, !!slotTomorrow, serviceStats['X5 Биржа']?.avgCheck); }
+    // Яндекс: Еда
+    let edaWeekIncome = 0, edaWeekHours = 0;
+    db.income.forEach(it => { if (it.service === 'Я.Еда' && it.date >= weekStart && it.date <= weekEnd) edaWeekIncome += Number(it.amount) || 0; });
+    db.schedule.forEach(s => {
+      if (s.service === 'Я.Еда' && s.date >= weekStart && s.date <= weekEnd) {
+        const [sh, sm] = s.startTime.split(':').map(Number); const [eh, em] = s.endTime.split(':').map(Number);
+        edaWeekHours += (eh * 60 + em - (sh * 60 + sm)) / 60;
+      }
+    });
+    let edaHourRate = edaWeekHours > 0 ? (edaWeekIncome / edaWeekHours) : 0;
+
+    // Яндекс: Доставка
+    let dostWeekIncome = 0, dostWeekHours = 0;
+    db.income.forEach(it => { if (it.service === 'Я.Доставка' && it.date >= weekStart && it.date <= weekEnd) dostWeekIncome += Number(it.amount) || 0; });
+    db.schedule.forEach(s => {
+      if (s.service === 'Я.Доставка' && s.date >= weekStart && s.date <= weekEnd) {
+        const [sh, sm] = s.startTime.split(':').map(Number); const [eh, em] = s.endTime.split(':').map(Number);
+        dostWeekHours += (eh * 60 + em - (sh * 60 + sm)) / 60;
+      }
+    });
+    let dostHourRate = dostWeekHours > 0 ? (dostWeekIncome / dostWeekHours) : 0;
+
+    // Бонусы (текущие активные)
+    let edaBonusPerHour = 0;
+    let edaY = getGoalProgress('Я.Еда', todayStr());
+    let edaP = getGoalProgress('Я.Еда_Парк', todayStr());
+    if (edaY && edaY.isActive && edaY.left > 0 && edaHourRate > 0) {
+      const check = byService['Я.Еда'] ? byService['Я.Еда'].avgCheck || 150 : 150;
+      const extraDelivs = edaY.bonus / check;
+      edaBonusPerHour += (extraDelivs / Math.max(edaWeekHours, 1)) * 100; // грубая оценка прибавки
+    }
+    // (Упрощенно для UI: показываем просто ставку + активные бонусы)
+
+    let options = [
+      { name: 'X5 Слот', rate: x5HourRate, color: 'var(--x5)' },
+      { name: 'Я.Еда', rate: edaHourRate + (edaBonusPerHour * 10), color: 'var(--eda)' },
+      { name: 'Я.Доставка', rate: dostHourRate + (dostHourRate * 0.1), color: 'var(--dost)' } // +10% примерный бонус от дневных целей
+    ].filter(o => o.rate > 0).sort((a,b) => b.rate - a.rate);
+
+    let bestStr = options.length > 0 ? options[0].name : 'X5 Слот';
+    let bestRate = options.length > 0 ? Math.round(options[0].rate) : 0;
+
+    let html = `
+      <div style="background:var(--card2); padding:14px; border-radius:12px; margin-bottom:12px; border:1px solid var(--green)">
+        <div style="font-size:12px; color:var(--green); text-transform:uppercase; font-weight:700; margin-bottom:8px;">🏆 Лучшее на этой неделе</div>
+        <div style="font-size:18px; font-weight:700; color:#fff; margin-bottom:4px;">${bestStr}</div>
+        <div style="font-size:13px; color:var(--muted); margin-bottom:12px;">Средняя ставка: ~${bestRate} ₽/ч</div>
+        
+        <div style="font-size:12px; color:var(--muted); margin-bottom:4px;">Все варианты (₽/час):</div>
+        ${options.map(o => `<div class="battle-sub" style="padding:4px 0;"><span style="color:${o.color}">${o.name}</span> <b>~${Math.round(o.rate)} ₽</b></div>`).join('')}
+      </div>
+    `;
+
+    html += `
+      <div style="background:rgba(168,85,247,0.1); border:1px solid var(--wb); padding:14px; border-radius:12px;">
+        <div style="font-size:12px; color:var(--wb); text-transform:uppercase; font-weight:700; margin-bottom:6px;">На сегодня / Завтра</div>
+        <div style="font-size:13px; line-height:1.5;">
+          <b>Сегодня:</b> ${slotToday ? 'У тебя есть слот.' : 'Слота нет.'}<br>
+          <b>Завтра:</b> ${slotTomorrow ? 'Слот забронирован.' : 'Слот не забронирован.'}
+        </div>
+      </div>
+    `;
+
     aggEl.innerHTML = html;
   }
 
-  // --- ПРОГРЕСС ПО ЦЕЛЯМ (ВСЕ) ---
+  // --- ПРОГРЕСС ПО ЦЕЛЯМ (РАЗДЕЛЬНЫЙ) ---
   const goalsCont = document.getElementById('goals-container'); let goalsHtml = '';
-  ['Я.Еда', 'Я.Доставка'].forEach(s => {
-    const prog = getCombinedGoalProgress(s, todayStr());
-    if (!prog || !prog.isActive) return;
+  
+  const renderOneGoal = (key, label, colorClass) => {
+    const prog = getGoalProgress(key, todayStr());
+    if (!prog) return ''; // Если цели нет, не показываем
     
-    const percent = Math.min(100, Math.round((prog.totalDone / prog.totalTarget) * 100));
+    const percent = Math.min(100, Math.round((prog.totalDone / prog.target) * 100));
     let advice = prog.left > 0 ? `Осталось: ${prog.left} вруч.` : `Цель достигнута! 🎉`;
-    if (prog.left > 0) advice += `<div style="font-size:12px;color:var(--green);margin-top:6px">💡 Бонус +${prog.totalBonus} ₽ (~${Math.round(prog.totalBonus/prog.left)} ₽/вруч)</div>`;
+    if (prog.left > 0) advice += `<div style="font-size:12px;color:var(--green);margin-top:6px">💡 Бонус +${prog.bonus} ₽ (~${Math.round(prog.bonus/prog.left)} ₽/вруч)</div>`;
     
-    goalsHtml += `
-      <div class="goal-card ${s === 'Я.Еда' ? 'eda' : 'dost'}">
-        <div class="goal-title"><span>${s} (Яндекс + Парк)</span><span class="badge">${prog.totalDone} / ${prog.totalTarget}</span></div>
-        <div class="progress-bg"><div class="progress-bar" style="width:${percent}%"></div></div>
-        <div class="goal-stats"><span>${advice}</span><span>${percent}%</span></div>
-      </div>`;
-  });
+    return `<div class="goal-card ${colorClass} ${prog.isActive ? '' : 'inactive'}">
+      <div class="goal-title"><span>${label}</span><span class="badge">${prog.totalDone} / ${prog.target}</span></div>
+      <div class="progress-bg"><div class="progress-bar" style="width:${percent}%"></div></div>
+      <div class="goal-stats"><span>${advice}</span><span>${percent}%</span></div>
+      <div style="font-size:10px; color:var(--muted); margin-top:4px;">${prog.start} — ${prog.end}</div>
+    </div>`;
+  };
+
+  goalsHtml += renderOneGoal('Я.Еда', '🟡 Я.Еда (Яндекс)', 'eda');
+  goalsHtml += renderOneGoal('Я.Еда_Парк', '🟡 Я.Еда (Парк)', 'eda');
+  goalsHtml += renderOneGoal('Я.Доставка', '🟠 Я.Доставка (Яндекс)', 'dost');
+  goalsHtml += renderOneGoal('Я.Доставка_Парк', '🟠 Я.Доставка (Парк)', 'dost');
 
   let dailyProg = getDailyDostProgress(todayStr());
   let nextMsg = dailyProg.nextTier ? `До цели (${dailyProg.nextTier.orders} вруч. / +${dailyProg.nextTier.bonus} ₽): осталось ${dailyProg.nextTier.orders - dailyProg.count} вруч.` : `Максимальная дневная цель достигнута!`;
   goalsHtml += `<div class="goal-card dost" style="border-left-color:var(--dost)"><div class="goal-title"><span>🟠 Я.Доставка (День)</span><span class="badge">${dailyProg.count} вруч.</span></div><div style="font-size:13px;margin-top:8px">${nextMsg}</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Текущий бонус: ${dailyProg.currentTier.bonus} ₽</div></div>`;
+  
   goalsCont.innerHTML = goalsHtml;
 }
 
