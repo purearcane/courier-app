@@ -971,15 +971,16 @@ function renderStats(){
   if (totalDeliveries === 0) {
     aggEl.innerHTML = '<div class="empty">Добавь заказы, чтобы увидеть анализ</div>';
   } else {
-    // Собираем стату за последнюю неделю (7 дней)
-    const weekStart = addDays(todayStr(), -7);
-    const weekEnd = todayStr();
+    const today = todayStr();
+    const tomorrow = tomorrowStr();
+    const slotToday = db.schedule.find(s => s.date === today && s.endTime > nowTimeStr());
+    const slotTomorrow = db.schedule.find(s => s.date === tomorrow);
     
-    // X5 Слоты
+    const weekStart = addDays(today, -7);
+    const weekEnd = today;
+    
     let x5WeekIncome = 0, x5WeekHours = 0;
-    db.income.forEach(it => {
-      if (it.service === 'X5 Слот' && it.date >= weekStart && it.date <= weekEnd) x5WeekIncome += Number(it.amount) || 0;
-    });
+    db.income.forEach(it => { if (it.service === 'X5 Слот' && it.date >= weekStart && it.date <= weekEnd) x5WeekIncome += Number(it.amount) || 0; });
     db.schedule.forEach(s => {
       if (s.service === 'X5 Слот' && s.date >= weekStart && s.date <= weekEnd) {
         const [sh, sm] = s.startTime.split(':').map(Number); const [eh, em] = s.endTime.split(':').map(Number);
@@ -988,7 +989,6 @@ function renderStats(){
     });
     let x5HourRate = x5WeekHours > 0 ? (x5WeekIncome / x5WeekHours) : 0;
 
-    // Яндекс: Еда
     let edaWeekIncome = 0, edaWeekHours = 0;
     db.income.forEach(it => { if (it.service === 'Я.Еда' && it.date >= weekStart && it.date <= weekEnd) edaWeekIncome += Number(it.amount) || 0; });
     db.schedule.forEach(s => {
@@ -999,7 +999,6 @@ function renderStats(){
     });
     let edaHourRate = edaWeekHours > 0 ? (edaWeekIncome / edaWeekHours) : 0;
 
-    // Яндекс: Доставка
     let dostWeekIncome = 0, dostWeekHours = 0;
     db.income.forEach(it => { if (it.service === 'Я.Доставка' && it.date >= weekStart && it.date <= weekEnd) dostWeekIncome += Number(it.amount) || 0; });
     db.schedule.forEach(s => {
@@ -1010,21 +1009,19 @@ function renderStats(){
     });
     let dostHourRate = dostWeekHours > 0 ? (dostWeekIncome / dostWeekHours) : 0;
 
-    // Бонусы (текущие активные)
     let edaBonusPerHour = 0;
-    let edaY = getGoalProgress('Я.Еда', todayStr());
-    let edaP = getGoalProgress('Я.Еда_Парк', todayStr());
+    let edaY = getGoalProgress('Я.Еда', today);
+    let edaP = getGoalProgress('Я.Еда_Парк', today);
     if (edaY && edaY.isActive && edaY.left > 0 && edaHourRate > 0) {
       const check = byService['Я.Еда'] ? byService['Я.Еда'].avgCheck || 150 : 150;
       const extraDelivs = edaY.bonus / check;
-      edaBonusPerHour += (extraDelivs / Math.max(edaWeekHours, 1)) * 100; // грубая оценка прибавки
+      edaBonusPerHour += (extraDelivs / Math.max(edaWeekHours, 1)) * 100; 
     }
-    // (Упрощенно для UI: показываем просто ставку + активные бонусы)
 
     let options = [
       { name: 'X5 Слот', rate: x5HourRate, color: 'var(--x5)' },
       { name: 'Я.Еда', rate: edaHourRate + (edaBonusPerHour * 10), color: 'var(--eda)' },
-      { name: 'Я.Доставка', rate: dostHourRate + (dostHourRate * 0.1), color: 'var(--dost)' } // +10% примерный бонус от дневных целей
+      { name: 'Я.Доставка', rate: dostHourRate + (dostHourRate * 0.1), color: 'var(--dost)' }
     ].filter(o => o.rate > 0).sort((a,b) => b.rate - a.rate);
 
     let bestStr = options.length > 0 ? options[0].name : 'X5 Слот';
@@ -1059,7 +1056,7 @@ function renderStats(){
   
   const renderOneGoal = (key, label, colorClass) => {
     const prog = getGoalProgress(key, todayStr());
-    if (!prog) return ''; // Если цели нет, не показываем
+    if (!prog) return ''; 
     
     const percent = Math.min(100, Math.round((prog.totalDone / prog.target) * 100));
     let advice = prog.left > 0 ? `Осталось: ${prog.left} вруч.` : `Цель достигнута! 🎉`;
