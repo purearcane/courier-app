@@ -62,6 +62,22 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted
   border:none;border-radius:10px;font-size:14px;cursor:pointer}
 .quick button:active{background:var(--eda);color:#111827}
 
+/* КАЛЕНДАРЬ */
+.cal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+.cal-title{font-weight:700;font-size:16px;text-transform:capitalize}
+.cal-nav{display:flex;gap:8px}
+.cal-nav button{background:var(--card2);border:none;color:var(--text);width:32px;height:32px;border-radius:8px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.cal-nav button:active{background:var(--eda);color:#111}
+.cal-grid{display:grid;grid-template-columns:repeat(7, 1fr);gap:4px;text-align:center}
+.cal-day-name{font-size:11px;color:var(--muted);margin-bottom:4px;font-weight:600}
+.cal-cell{aspect-ratio:1; background:var(--card2); border-radius:8px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; border:2px solid transparent; transition:border-color 0.2s; position:relative;}
+.cal-cell.empty{background:transparent;cursor:default}
+.cal-cell.today{border-color:rgba(250,204,21,0.4)}
+.cal-cell.selected{border-color:var(--eda)}
+.cal-num{font-size:14px;font-weight:600;margin-bottom:2px}
+.cal-dots{display:flex;gap:2px;justify-content:center;height:6px;}
+.cal-dot{width:6px;height:6px;border-radius:50%;}
+
 .goal-card{background:var(--card);border-radius:14px;padding:14px;margin-bottom:12px;border-left:4px solid var(--birja)}
 .goal-card.eda{border-left-color:var(--eda)}
 .goal-card.dost{border-left-color:var(--dost)}
@@ -107,12 +123,24 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted
 /* Инфо-плашка */
 .info-plate{background:rgba(59,130,246,0.1);border:1px solid var(--birja);color:var(--birja);padding:10px;border-radius:8px;font-size:12px;margin-bottom:12px;line-height:1.4}
 
-/* Рекорды */
-.record-card{display:flex;justify-content:space-between;align-items:center;padding:12px;background:var(--card2);border-radius:10px;margin-bottom:8px}
-.record-info{display:flex;flex-direction:column}
-.record-title{font-size:12px;color:var(--muted);text-transform:uppercase;margin-bottom:4px}
-.record-date{font-size:14px;font-weight:600}
-.record-amount{font-size:18px;font-weight:700;color:var(--eda)}
+/* РЕКОРДЫ (Аккордеон) */
+details.record-accordion { background: var(--card2); border-radius: 10px; margin-bottom: 8px; overflow: hidden; }
+details.record-accordion summary { display: flex; justify-content: space-between; align-items: center; padding: 12px; cursor: pointer; list-style: none; outline: none; transition: background 0.2s; }
+details.record-accordion summary::-webkit-details-marker { display: none; }
+details.record-accordion summary:active { background: rgba(255,255,255,0.05); }
+details.record-accordion[open] summary { border-bottom: 1px solid var(--card); background: rgba(0,0,0,0.1); }
+
+.record-info { display: flex; flex-direction: column; }
+.record-title { font-size: 12px; color: var(--muted); text-transform: uppercase; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;}
+.record-date { font-size: 14px; font-weight: 600; }
+.record-amount { font-size: 18px; font-weight: 700; color: var(--eda); }
+
+.record-list-inner { padding: 8px 12px; background: rgba(0,0,0,0.15); }
+.record-sub-item { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--card2); font-size: 13px; }
+.record-sub-item:last-child { border-bottom: none; }
+.record-sub-place { font-weight: 700; margin-right: 8px; width: 20px;}
+.record-sub-date { color: var(--text); }
+.record-sub-amount { font-weight: 700; color: var(--text); }
 
 /* Битва целей */
 .battle-card{background:var(--card2);border-radius:12px;padding:12px;margin-bottom:10px;border-left:4px solid var(--muted)}
@@ -141,6 +169,11 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted
 .forecast-title{font-size:12px;text-transform:uppercase;color:var(--wb);font-weight:700;margin-bottom:6px}
 .forecast-val{font-size:20px;font-weight:700;color:var(--text)}
 .forecast-desc{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4}
+
+/* Фильтр общей статистики */
+.stats-filter-row { display: flex; gap: 8px; margin-bottom: 12px; }
+.stats-filter-row select { flex: 1; }
+.stats-filter-row input[type="date"] { flex: 1; }
 </style>
 </head>
 <body>
@@ -239,7 +272,22 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted
       <button class="btn" id="btn-add-schedule">+ Забронировать слот</button>
       <button class="btn sec" id="btn-cancel-schedule" style="display:none; margin-top:8px;">Отмена</button>
     </div>
-    <h2>Забронированные слоты</h2>
+
+    <h2>Календарь смен</h2>
+    <div class="card">
+      <div class="cal-header">
+        <div class="cal-title" id="cal-month-title">Ноябрь 2026</div>
+        <div class="cal-nav">
+          <button onclick="changeMonth(-1)">‹</button>
+          <button onclick="changeMonth(1)">›</button>
+        </div>
+      </div>
+      <div class="cal-grid" id="cal-grid">
+        <!-- Заполняется через JS -->
+      </div>
+    </div>
+
+    <h2 id="selected-day-title">Слоты на выбранный день</h2>
     <div class="list" id="sch-list"></div>
   </section>
 
@@ -273,14 +321,20 @@ h2{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted
     <div class="card" id="store-analysis"></div>
 
     <h2>Общая статистика</h2>
-    <div class="card">
-      <div class="stat"><span class="k">Доход (валовый)</span><span class="v" id="st-gross">0 ₽</span></div>
-      <div class="stat"><span class="k">Прочие расходы</span><span class="v" id="st-other">0 ₽</span></div>
-      <div class="stat"><span class="k" style="color:var(--red)">Налог (<span id="st-tax-percent">6</span>%)</span><span class="v" style="color:var(--red)" id="st-tax">0 ₽</span></div>
-      <div class="stat"><span class="k" style="color:var(--green); font-weight:700">Чистыми (на руки)</span><span class="v" style="color:var(--green); font-size:18px" id="st-clean">0 ₽</span></div>
-      <div class="stat"><span class="k">Заказы / Вручения / Часы</span><span class="v" id="st-orders">0 / 0 / 0ч</span></div>
-      <div class="stat"><span class="k" style="color:var(--eda); font-weight:700">Общая ставка в час</span><span class="v" style="color:var(--eda)" id="st-rate">0 ₽/ч</span></div>
-      <div class="stat"><span class="k">Средний доход за заказ</span><span class="v" id="st-avg">0 ₽</span></div>
+    <div class="stats-filter-row">
+      <select id="stats-period-type" onchange="updateStatsFilter()">
+        <option value="all">За всё время</option>
+        <option value="day">За день</option>
+        <option value="week">За неделю</option>
+        <option value="month">За месяц</option>
+        <option value="year">За год</option>
+      </select>
+      <div id="stats-date-box" style="display:none; flex:1;">
+        <input type="date" id="stats-date" onchange="updateStatsFilter()" style="margin:0;">
+      </div>
+    </div>
+    <div class="card" id="general-stats-card">
+      <!-- Заполняется через JS -->
     </div>
 
     <h2>Сравнение периодов</h2>
@@ -413,6 +467,11 @@ const COLORS = {
 
 let db = loadDB();
 let editSchId = null; 
+let calViewDate = new Date();
+let selectedCalDate = todayStr();
+
+let statsPeriod = 'all';
+let statsFilterDate = todayStr();
 
 function defaultDB(){ 
   return { 
@@ -473,8 +532,36 @@ function getMonday(ds){ const d=datePart(ds); const day=(d.getDay()+6)%7; d.setD
 function getSunday(ds){ return addDays(getMonday(ds), 6); }
 function getMonthStart(ds){ const d=datePart(ds); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-01'; }
 function getMonthEnd(ds){ const d=datePart(ds); const last=new Date(d.getFullYear(), d.getMonth()+1, 0); return fmtDate(last); }
+function getYearStart(ds){ const d=datePart(ds); return d.getFullYear()+'-01-01'; }
+function getYearEnd(ds){ const d=datePart(ds); return d.getFullYear()+'-12-31'; }
 function esc(s){ return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function weekdayRu(ds){ const p=ds.split('-').map(Number); const d=new Date(p[0],p[1]-1,p[2]); return ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][d.getDay()]; }
+
+// Форматирование дат для рекордов
+const MONTHS_RU = ["Января", "Февраля", "Марта", "Апреля", "Мая", "Июня", "Июля", "Августа", "Сентября", "Октября", "Ноября", "Декабря"];
+const MONTHS_RU_NOM = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+
+function formatDateFull(ds) {
+  const [y, m, d] = ds.split('-');
+  return `${d} ${MONTHS_RU[parseInt(m)-1]}, ${y}`;
+}
+
+function formatWeekRange(startDs) {
+  const endDs = addDays(startDs, 6);
+  const [sy, sm, sd] = startDs.split('-');
+  const [ey, em, ed] = endDs.split('-');
+  
+  if (sm === em && sy === ey) {
+    return `${sd} — ${ed} ${MONTHS_RU[parseInt(sm)-1]}, ${sy}`;
+  } else {
+    return `${sd} ${MONTHS_RU[parseInt(sm)-1]} — ${ed} ${MONTHS_RU[parseInt(em)-1]}, ${ey}`;
+  }
+}
+
+function formatMonth(ym) {
+  const [y, m] = ym.split('-');
+  return `${MONTHS_RU_NOM[parseInt(m)-1]} ${y}`;
+}
 
 let toastT=null;
 function toast(msg, ms=2000){
@@ -491,6 +578,29 @@ window.toggleDeliveries = function() { document.getElementById('deliveries-box')
 window.toggleX5Fields = function() { document.getElementById('x5-store-box').style.display = (document.getElementById('inc-service').value.startsWith('X5')) ? 'block' : 'none'; }
 window.toggleSchStore = function() { 
   document.getElementById('sch-store-box').style.display = (document.getElementById('sch-service').value === 'X5 Слот') ? 'block' : 'none'; 
+}
+
+window.changeMonth = function(offset) {
+  calViewDate.setMonth(calViewDate.getMonth() + offset);
+  renderCalendar();
+}
+
+window.selectCalDate = function(dateStr) {
+  selectedCalDate = dateStr;
+  renderCalendar();
+  renderSelectedDayList();
+}
+
+window.updateStatsFilter = function() {
+  statsPeriod = document.getElementById('stats-period-type').value;
+  const dateBox = document.getElementById('stats-date-box');
+  if (statsPeriod === 'all') {
+    dateBox.style.display = 'none';
+  } else {
+    dateBox.style.display = 'block';
+  }
+  statsFilterDate = document.getElementById('stats-date').value || todayStr();
+  renderGeneralStats();
 }
 
 document.querySelectorAll('.tabs button').forEach(b=>{
@@ -547,19 +657,86 @@ function renderHoursList(){
   el.innerHTML=keys.map(d=>`<div class="item"><div><div>${esc(d)}</div><div class="meta">${weekdayRu(d)}</div></div><div style="display:flex;align-items:center;gap:4px"><span class="amt">${db.hours[d]} ч</span><button class="del" data-del-hour="${esc(d)}">✕</button></div></div>`).join('');
 }
 
+/* ---------- CALENDAR RENDER ---------- */
 function renderSchedule(){
-  const el=document.getElementById('sch-list');
-  const today = todayStr();
-  const sorted = db.schedule.filter(s => s.date >= today).sort((a,b) => (a.date+' '+a.startTime).localeCompare(b.date+' '+b.startTime));
-  if(!sorted.length){ el.innerHTML='<div class="empty">Нет забронированных слотов</div>'; return; }
+  renderCalendar();
+  renderSelectedDayList();
+}
+
+function renderCalendar(){
+  const el = document.getElementById('cal-grid');
+  const titleEl = document.getElementById('cal-month-title');
   
-  el.innerHTML=sorted.map(s=>{
+  const year = calViewDate.getFullYear();
+  const month = calViewDate.getMonth();
+  
+  titleEl.textContent = `${MONTHS_RU_NOM[month]} ${year}`;
+
+  const firstDay = new Date(year, month, 1);
+  let startDay = firstDay.getDay() - 1; 
+  if (startDay === -1) startDay = 6; 
+
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  
+  let html = '';
+  
+  ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'].forEach(d => {
+    html += `<div class="cal-day-name">${d}</div>`;
+  });
+
+  for (let i = 0; i < startDay; i++) {
+    html += `<div class="cal-cell empty"></div>`;
+  }
+
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = dateStr === todayStr();
+    const isSelected = dateStr === selectedCalDate;
+    
+    const slots = db.schedule.filter(s => s.date === dateStr);
+    const services = [...new Set(slots.map(s => s.service))];
+    
+    let dotsHtml = '<div class="cal-dots">';
+    services.forEach(srv => {
+      dotsHtml += `<div class="cal-dot" style="background:${COLORS[srv] || 'var(--muted)'}"></div>`;
+    });
+    dotsHtml += '</div>';
+
+    let className = 'cal-cell';
+    if (isToday) className += ' today';
+    if (isSelected) className += ' selected';
+
+    html += `
+      <div class="${className}" onclick="selectCalDate('${dateStr}')">
+        <span class="cal-num">${d}</span>
+        ${dotsHtml}
+      </div>
+    `;
+  }
+
+  el.innerHTML = html;
+}
+
+function renderSelectedDayList() {
+  const el = document.getElementById('sch-list');
+  const titleEl = document.getElementById('selected-day-title');
+  
+  titleEl.textContent = `Слоты на ${selectedCalDate} (${weekdayRu(selectedCalDate)})`;
+  
+  const daySlots = db.schedule.filter(s => s.date === selectedCalDate).sort((a,b) => a.startTime.localeCompare(b.startTime));
+  
+  if(daySlots.length === 0){ 
+    el.innerHTML = '<div class="empty">В этот день нет слотов</div>'; 
+    return; 
+  }
+  
+  el.innerHTML = daySlots.map(s => {
     const color = COLORS[s.service] || 'var(--muted)';
     const storeStr = s.store ? ` · ${esc(s.store)}` : '';
     return `<div class="item" style="border-left: 4px solid ${color}">
       <div>
         <div><b>${esc(s.startTime)} — ${esc(s.endTime)}</b> <span style="color:${color};font-size:12px">${esc(s.service)}</span></div>
-        <div class="meta">${esc(s.date)} (${weekdayRu(s.date)})${storeStr}</div>
+        <div class="meta">${storeStr}</div>
       </div>
       <div style="display:flex">
         <button class="edit" data-edit-schedule="${esc(s.id)}">✏️</button>
@@ -627,66 +804,216 @@ function getDailyDostProgress(dateStr) {
   return { count, currentTier, nextTier };
 }
 
-/* ---------- FORECAST (ALL SLOTS) ---------- */
-function renderForecast() {
-  const el = document.getElementById('forecast-container');
-  const today = todayStr();
-  const nextWeek = addDays(today, 7);
-  
-  const upcomingSlots = db.schedule.filter(s => s.date >= today && s.date <= nextWeek).sort((a,b)=>a.date.localeCompare(b.date));
-  
-  if (upcomingSlots.length === 0) {
-    el.innerHTML = `<div class="forecast-card" style="border-color:var(--muted);background:var(--card)"><div class="forecast-desc">На ближайшие 7 дней нет забронированных слотов.</div></div>`;
-    return;
-  }
+/* ---------- УМНЫЙ РАСЧЕТ СТАТИСТИКИ ---------- */
+function getStatsForPeriod(startStr, endStr) {
+  let stats = {
+    x5: { income: 0, hours: 0, delivs: 0 },
+    eda: { income: 0, hours: 0, delivs: 0 },
+    dost: { income: 0, hours: 0, delivs: 0 }
+  };
+  const parseTime = (t) => { if(!t) return 0; const p = t.split(':').map(Number); return p[0]*60 + p[1]; };
 
-  let plannedHours = 0;
-  upcomingSlots.forEach(s => {
-    const [sh, sm] = s.startTime.split(':').map(Number); const [eh, em] = s.endTime.split(':').map(Number);
-    plannedHours += (eh * 60 + em - (sh * 60 + sm)) / 60;
-  });
+  const dostDays = new Set();
+  const daySlots = {}; 
 
-  let slotsIncome = 0;
-  db.income.forEach(it => { if(it.service.endsWith('Слот')) slotsIncome += Number(it.amount)||0; });
-  
-  let slotsHoursTotal = 0;
   db.schedule.forEach(s => {
-    if (s.date < today) { 
-        const [sh, sm] = s.startTime.split(':').map(Number); const [eh, em] = s.endTime.split(':').map(Number);
-        slotsHoursTotal += (eh * 60 + em - (sh * 60 + sm)) / 60;
+    if (s.date >= startStr && s.date <= endStr) {
+      if (!daySlots[s.date]) daySlots[s.date] = [];
+      daySlots[s.date].push(s);
+      
+      const dur = (parseTime(s.endTime) - parseTime(s.startTime)) / 60;
+      if (s.service === 'X5 Слот') stats.x5.hours += dur;
+      else if (s.service === 'Я.Еда') stats.eda.hours += dur;
+      else if (s.service === 'Я.Доставка') {
+        stats.dost.hours += dur;
+        dostDays.add(s.date);
+      }
     }
   });
 
-  let avgRate = slotsHoursTotal > 0 ? (slotsIncome / slotsHoursTotal) : 0;
+  db.income.forEach(it => {
+    if (it.date >= startStr && it.date <= endStr) {
+      const amt = Number(it.amount) || 0;
+      const deliv = Number(it.deliveries) || 1;
+      const itTime = parseTime(it.time);
+      
+      if (dostDays.has(it.date)) {
+        stats.dost.income += amt;
+        if (it.type === 'Заказ') stats.dost.delivs += deliv;
+      }
+
+      if (it.service === 'X5 Слот' || it.service === 'X5 Биржа') {
+        const x5Slots = (daySlots[it.date] || []).filter(s => s.service === 'X5 Слот');
+        const overlaps = x5Slots.some(s => {
+          const sStart = parseTime(s.startTime), sEnd = parseTime(s.endTime);
+          return !it.time || (itTime >= sStart && itTime <= sEnd);
+        });
+        if (overlaps) {
+          stats.x5.income += amt;
+          if (it.type === 'Заказ') stats.x5.delivs += deliv;
+        }
+      }
+
+      if (it.service === 'Я.Еда') {
+        const edaSlots = (daySlots[it.date] || []).filter(s => s.service === 'Я.Еда');
+        const overlaps = edaSlots.some(s => {
+          const sStart = parseTime(s.startTime), sEnd = parseTime(s.endTime);
+          return !it.time || (itTime >= sStart && itTime <= sEnd);
+        });
+        if (overlaps) {
+          stats.eda.income += amt;
+          if (it.type === 'Заказ') stats.eda.delivs += deliv;
+        }
+      }
+    }
+  });
+
+  let rates = {
+    x5: stats.x5.hours > 0 ? stats.x5.income / stats.x5.hours : 0,
+    eda: stats.eda.hours > 0 ? stats.eda.income / stats.eda.hours : 0,
+    dost: stats.dost.hours > 0 ? stats.dost.income / stats.dost.hours : 0
+  };
+  let delivRates = {
+    x5: stats.x5.hours > 0 ? stats.x5.delivs / stats.x5.hours : 2.5,
+    eda: stats.eda.hours > 0 ? stats.eda.delivs / stats.eda.hours : 2.5,
+    dost: stats.dost.hours > 0 ? stats.dost.delivs / stats.dost.hours : 2.5
+  };
+
+  return { stats, rates, delivRates };
+}
+
+/* ---------- FORECAST ---------- */
+function renderForecast() {
+  const el = document.getElementById('forecast-container');
+  const today = todayStr();
   
-  if (avgRate === 0) {
-    let grossAll = 0; db.income.forEach(it => grossAll += Number(it.amount) || 0);
-    let hoursAll = 0; const allDates = new Set([...Object.keys(db.hours), ...db.income.map(i=>i.date), ...db.schedule.map(s=>s.date)]);
-    allDates.forEach(d => { if(d) hoursAll += getLiveHours(d).total; });
-    avgRate = hoursAll > 0 ? (grossAll / hoursAll) : 0;
+  const { rates, delivRates } = getStatsForPeriod('2000-01-01', addDays(today, -1));
+  
+  let finalRates = {
+    'X5 Слот': rates.x5 || 200,
+    'Я.Еда': rates.eda || 200,
+    'Я.Доставка': rates.dost || 200
+  };
+  let finalDelivRates = {
+    'X5 Слот': delivRates.x5 || 2.5,
+    'Я.Еда': delivRates.eda || 2.5,
+    'Я.Доставка': delivRates.dost || 2.5
+  };
+
+  let totalExpected = 0;
+  let hasSlots = false;
+  let html = '<div class="forecast-card">';
+  html += '<div class="forecast-title">Прогноз на 7 дней</div>';
+
+  for (let i = 0; i < 7; i++) {
+    const dateStr = addDays(today, i);
+    const daySlots = db.schedule.filter(s => s.date === dateStr);
+    
+    let dateObj = new Date(dateStr);
+    let dayName = i === 0 ? 'Сегодня' : i === 1 ? 'Завтра' : ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][dateObj.getDay()];
+    
+    if (daySlots.length > 0) {
+      hasSlots = true;
+      let dayBaseIncome = 0;
+      let dayExpectedBonus = 0;
+      let dayDetails = [];
+
+      daySlots.forEach(slot => {
+        const [sh, sm] = slot.startTime.split(':').map(Number);
+        const [eh, em] = slot.endTime.split(':').map(Number);
+        const hours = (eh * 60 + em - (sh * 60 + sm)) / 60;
+        
+        const rate = finalRates[slot.service] || 200;
+        const base = Math.round(hours * rate);
+        dayBaseIncome += base;
+
+        const estDelivs = hours * (finalDelivRates[slot.service] || 2.5);
+
+        let slotBonus = 0;
+        
+        let yGoal = getGoalProgress(slot.service, dateStr);
+        if (yGoal && yGoal.isActive && yGoal.left > 0) {
+            let bonusPerD = yGoal.bonus / yGoal.target;
+            let willDo = Math.min(yGoal.left, estDelivs);
+            slotBonus += willDo * bonusPerD;
+        }
+        
+        let pGoal = getGoalProgress(slot.service + '_Парк', dateStr);
+        if (pGoal && pGoal.isActive && pGoal.left > 0) {
+            let bonusPerD = pGoal.bonus / pGoal.target;
+            let willDo = Math.min(pGoal.left, estDelivs);
+            slotBonus += willDo * bonusPerD;
+        }
+
+        if (slot.service === 'Я.Доставка') {
+            let dayEstDostHours = 0;
+            daySlots.filter(x => x.service === 'Я.Доставка').forEach(x => {
+                dayEstDostHours += (Number(x.endTime.split(':')[0])*60 + Number(x.endTime.split(':')[1]) - (Number(x.startTime.split(':')[0])*60 + Number(x.startTime.split(':')[1]))) / 60;
+            });
+            let estDostDelivs = dayEstDostHours * (finalDelivRates['Я.Доставка'] || 2.5);
+            
+            let doneDost = 0;
+            db.income.forEach(it => {
+                if (it.date === dateStr && it.service === 'Я.Доставка' && it.type === 'Заказ') doneDost += Number(it.deliveries) || 1;
+            });
+
+            let projTotal = doneDost + Math.round(estDostDelivs);
+            let projBonus = 0;
+            for (let t of DOST_DAILY_TIERS) { if (projTotal >= t.orders) projBonus = t.bonus; }
+            let currBonus = 0;
+            for (let t of DOST_DAILY_TIERS) { if (doneDost >= t.orders) currBonus = t.bonus; }
+            slotBonus += Math.max(0, projBonus - currBonus);
+        }
+
+        dayExpectedBonus += Math.round(slotBonus);
+        dayDetails.push({ name: slot.service, time: `${slot.startTime}-${slot.endTime}`, base: base, bonus: Math.round(slotBonus) });
+      });
+
+      totalExpected += dayBaseIncome + dayExpectedBonus;
+
+      html += `<div style="margin-bottom:12px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; border-left:4px solid var(--birja)">
+          <div style="font-weight:700; margin-bottom:6px;">${dayName} (${dateStr.substring(5)})</div>`;
+
+      dayDetails.forEach(d => {
+          html += `<div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
+              <span style="color:var(--muted)">${d.name} (${d.time})</span>
+              <span><b>~${d.base} ₽</b> ${d.bonus > 0 ? `<span style="color:var(--green)">+${d.bonus} бонус</span>` : ''}</span>
+          </div>`;
+      });
+
+      let dayTotal = dayBaseIncome + dayExpectedBonus;
+      html += `<div style="font-size:11px; color:var(--green); text-align:right; margin-top:2px;">Итого: ~${dayTotal} ₽</div>`;
+      html += `</div>`;
+    } else {
+      let tips = [];
+      ['Я.Еда', 'Я.Доставка'].forEach(s => {
+          let yG = getGoalProgress(s, dateStr);
+          if (yG && yG.isActive && yG.left > 0) tips.push(`До цели ${s} осталось ${yG.left} вруч. (бонус ${yG.bonus} ₽)`);
+          let pG = getGoalProgress(s + '_Парк', dateStr);
+          if (pG && pG.isActive && pG.left > 0) tips.push(`До цели ${s} (Парк) осталось ${pG.left} вруч. (бонус ${pG.bonus} ₽)`);
+      });
+
+      if (tips.length > 0) {
+          html += `<div style="margin-bottom:12px; background:rgba(250,204,21,0.05); padding:10px; border-radius:8px; border-left:4px solid var(--muted)">
+              <div style="font-weight:700; margin-bottom:4px;">${dayName} (${dateStr.substring(5)})</div>
+              <div style="font-size:12px; color:var(--muted); margin-bottom:4px;">Слотов нет. 💡 Но можно выйти на линии:</div>`;
+          tips.forEach(t => { html += `<div style="font-size:11px; color:var(--eda); margin-bottom:2px;">${t}</div>`; });
+          html += `</div>`;
+      }
+    }
   }
 
-  const expected = Math.round(plannedHours * avgRate);
-  
-  let slotsHtml = upcomingSlots.map(s => {
-    const isToday = s.date === today;
-    const color = COLORS[s.service] || 'var(--muted)';
-    return `<div style="font-size:12px;display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(255,255,255,0.1)">
-      <span style="color:${isToday ? 'var(--eda)' : 'var(--text)'}">${isToday ? 'Сегодня' : s.date.substring(5)} (${weekdayRu(s.date)})</span>
-      <span style="color:${color}">${s.startTime}-${s.endTime} · ${s.store || s.service}</span>
+  if (!hasSlots && totalExpected === 0) {
+    html += `<div class="forecast-desc" style="text-align:center; padding:20px;">На ближайшие 7 дней нет слотов и активных целей.</div>`;
+  } else {
+    html += `<div style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center;">
+        <span style="color:var(--muted); font-size:13px;">Итого (с бонусами)</span>
+        <span style="font-size:20px; font-weight:700; color:var(--wb);">~ ${totalExpected} ₽</span>
     </div>`;
-  }).join('');
+  }
 
-  el.innerHTML = `
-    <div class="forecast-card">
-      <div class="forecast-title">Ожидаемый доход со слотов (7 дней)</div>
-      <div class="forecast-val">~ ${expected} ₽</div>
-      <div class="forecast-desc">У тебя <b>${Math.round(plannedHours)} часов</b> на слотах.<br>Средняя ставка слота: ${Math.round(avgRate)} ₽/ч.</div>
-      <div style="margin-top:10px; border-top:1px solid rgba(255,255,255,0.1); padding-top:8px;">
-        ${slotsHtml}
-      </div>
-    </div>
-  `;
+  html += '</div>';
+  el.innerHTML = html;
 }
 
 /* ---------- other renderers ---------- */
@@ -763,6 +1090,7 @@ function renderTrend7Days() {
   el.innerHTML = html;
 }
 
+/* ---------- RECORDS ---------- */
 function renderRecords() {
   const el = document.getElementById('records-container');
   if(!db.income.length) { el.innerHTML = '<div class="empty">Добавь доходы, чтобы увидеть рекорды</div>'; return; }
@@ -772,29 +1100,66 @@ function renderRecords() {
   db.income.forEach(it => {
     if (!it.date) return;
     const amt = Number(it.amount) || 0;
+    
     daily[it.date] = (daily[it.date] || 0) + amt;
+    
     const monday = getMonday(it.date);
     weekly[monday] = (weekly[monday] || 0) + amt;
+    
     const month = it.date.substring(0, 7);
     monthly[month] = (monthly[month] || 0) + amt;
   });
 
-  const maxDaily = Object.entries(daily).sort((a,b)=>b[1]-a[1])[0];
-  const maxWeekly = Object.entries(weekly).sort((a,b)=>b[1]-a[1])[0];
-  const maxMonthly = Object.entries(monthly).sort((a,b)=>b[1]-a[1])[0];
+  const topDaily = Object.entries(daily).sort((a,b)=>b[1]-a[1]).slice(0, 3);
+  const topWeekly = Object.entries(weekly).sort((a,b)=>b[1]-a[1]).slice(0, 3);
+  const topMonthly = Object.entries(monthly).sort((a,b)=>b[1]-a[1]).slice(0, 3);
+
+  const medals = ['🥇', '🥈', '🥉'];
+
+  function buildRecordHtml(title, dataArr, formatFunc) {
+    if (dataArr.length === 0) return '';
+    
+    const best = dataArr[0];
+    const bestDate = formatFunc(best[0]);
+    const bestVal = Math.round(best[1]);
+
+    let innerHtml = '';
+    if (dataArr.length > 1) {
+      innerHtml = `<div class="record-list-inner">`;
+      dataArr.slice(1).forEach((item, idx) => {
+        const medal = medals[idx + 1];
+        innerHtml += `
+          <div class="record-sub-item">
+            <div style="display:flex; align-items:center;">
+              <span class="record-sub-place">${medal}</span>
+              <span class="record-sub-date">${formatFunc(item[0])}</span>
+            </div>
+            <span class="record-sub-amount">${Math.round(item[1])} ₽</span>
+          </div>
+        `;
+      });
+      innerHtml += `</div>`;
+    }
+
+    return `
+      <details class="record-accordion">
+        <summary>
+          <div class="record-info">
+            <span class="record-title">🥇 ${title}</span>
+            <span class="record-date">${bestDate}</span>
+          </div>
+          <span class="record-amount">${bestVal} ₽</span>
+        </summary>
+        ${innerHtml}
+      </details>
+    `;
+  }
 
   let html = '';
+  html += buildRecordHtml('Лучший день', topDaily, formatDateFull);
+  html += buildRecordHtml('Лучшая неделя', topWeekly, formatWeekRange);
+  html += buildRecordHtml('Лучший месяц', topMonthly, formatMonth);
 
-  if (maxDaily) html += `<div class="record-card"><div class="record-info"><span class="record-title">Лучший день</span><span class="record-date">${weekdayRu(maxDaily[0])}, ${maxDaily[0]}</span></div><span class="record-amount">${Math.round(maxDaily[1])} ₽</span></div>`;
-  if (maxWeekly) {
-    const weekEnd = getSunday(maxWeekly[0]);
-    html += `<div class="record-card"><div class="record-info"><span class="record-title">Лучшая неделя</span><span class="record-date">${maxWeekly[0]} — ${weekEnd}</span></div><span class="record-amount">${Math.round(maxWeekly[1])} ₽</span></div>`;
-  }
-  if (maxMonthly) {
-    const dateObj = new Date(maxMonthly[0] + '-02');
-    const monthName = dateObj.toLocaleString('ru-RU', { month: 'long' });
-    html += `<div class="record-card"><div class="record-info"><span class="record-title">Лучший месяц</span><span class="record-date" style="text-transform:capitalize">${monthName} ${dateObj.getFullYear()}</span></div><span class="record-amount">${Math.round(maxMonthly[1])} ₽</span></div>`;
-  }
   el.innerHTML = html;
 }
 
@@ -910,20 +1275,142 @@ function renderAdvancedAnalysis(){
     `;
   }
   document.getElementById('day-analysis').innerHTML = dayHtml || '<div class="empty">Нужно больше данных</div>';
+}
 
-  const storeStats = {};
-  db.income.forEach(it => { if (it.service.startsWith('X5') && it.store && it.type === 'Заказ') { if (!storeStats[it.store]) storeStats[it.store] = { income: 0, delivs: 0 }; storeStats[it.store].income += Number(it.amount) || 0; storeStats[it.store].delivs += Number(it.deliveries) || 1; } });
-  const sortedStores = Object.keys(storeStats).map(name => { const s = storeStats[name]; return { name, avg: s.income / s.delivs, total: s.income, delivs: s.delivs }; }).sort((a, b) => b.avg - a.avg);
-  let storeHtml = '';
-  if (sortedStores.length === 0) storeHtml = '<div class="empty">Добавь заказы с указанием магазина X5, чтобы увидеть анализ.</div>';
-  else {
-    const maxStoreAvg = sortedStores[0].avg;
-    sortedStores.forEach((s, idx) => {
-      const pct = maxStoreAvg > 0 ? (s.avg / maxStoreAvg * 100) : 0; const isBest = (idx === 0);
-      storeHtml += `<div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px"><span style="color:${isBest?'var(--green)':'var(--text)'}"><b>${esc(s.name)}</b></span><span style="color:var(--muted)">${Math.round(s.avg)} ₽/вруч.</span></div><div class="bar-track" style="height:8px;border-radius:2px"><div class="bar-fill" style="width:${pct}%;background:${isBest?'var(--green)':'var(--x5)'}"></div></div><div style="font-size:11px;color:var(--muted);margin-top:2px">Всего: ${s.delivs} вруч. на ${Math.round(s.total)} ₽</div></div>`;
-    });
+/* ---------- STORE ANALYSIS (NEW) ---------- */
+function renderStoreAnalysis() {
+  const el = document.getElementById('store-analysis');
+  
+  let storeData = {};
+  X5_STORES.forEach(s => {
+    storeData[s] = { income: 0, delivs: 0, hours: 0 };
+  });
+
+  // 1. Считаем доход и вручения (ТОЛЬКО X5 Слот)
+  db.income.forEach(it => {
+     if (it.service === 'X5 Слот' && it.store && storeData[it.store]) {
+        storeData[it.store].income += Number(it.amount) || 0;
+        if (it.type === 'Заказ') storeData[it.store].delivs += Number(it.deliveries) || 1;
+     }
+  });
+
+  // 2. Считаем часы (ТОЛЬКО из расписания слотов X5)
+  db.schedule.forEach(s => {
+     if (s.service === 'X5 Слот' && s.store && storeData[s.store]) {
+        const [sh, sm] = s.startTime.split(':').map(Number); 
+        const [eh, em] = s.endTime.split(':').map(Number);
+        storeData[s.store].hours += (eh * 60 + em - (sh * 60 + sm)) / 60;
+     }
+  });
+
+  // 3. Сортируем
+  let sortedStores = Object.keys(storeData).map(name => {
+     const d = storeData[name];
+     return {
+        name: name,
+        income: d.income,
+        delivs: d.delivs,
+        hours: d.hours,
+        avgCheck: d.delivs > 0 ? d.income / d.delivs : 0,
+        hourRate: d.hours > 0 ? d.income / d.hours : 0
+     };
+  }).filter(s => s.income > 0 || s.hours > 0)
+    .sort((a, b) => b.hourRate - a.hourRate);
+
+  if (sortedStores.length === 0) {
+     el.innerHTML = '<div class="empty">Нет данных по магазинам X5. Добавьте слоты и доходы.</div>';
+     return;
   }
-  document.getElementById('store-analysis').innerHTML = storeHtml;
+
+  let html = '';
+  sortedStores.forEach((s, idx) => {
+     const isBest = (idx === 0);
+     html += `
+       <details class="record-accordion" style="margin-bottom:8px;">
+         <summary style="padding:12px;">
+           <div class="record-info">
+             <span class="record-title" style="color:${isBest ? 'var(--green)' : 'var(--text)'}">
+               ${isBest ? '🥇 ' : ''}${esc(s.name)}
+             </span>
+             <span class="record-date" style="font-size:12px; color:var(--muted);">
+               Общая выручка: <b>${Math.round(s.income)} ₽</b> (${s.delivs} вруч.)
+             </span>
+           </div>
+           <div style="text-align:right;">
+             <span class="record-amount" style="color:var(--x5); font-size:16px;">${Math.round(s.hourRate)} ₽/ч</span>
+           </div>
+         </summary>
+         <div class="record-list-inner" style="padding:10px;">
+           <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;">
+             <span style="color:var(--muted)">Средний чек (вручение):</span>
+             <b>${Math.round(s.avgCheck)} ₽</b>
+           </div>
+           <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:4px;">
+             <span style="color:var(--muted)">Всего часов на слоте:</span>
+             <b>${Math.round(s.hours*10)/10} ч</b>
+           </div>
+         </div>
+       </details>
+     `;
+  });
+
+  el.innerHTML = html;
+}
+
+/* ---------- GENERAL STATS (NEW) ---------- */
+function renderGeneralStats() {
+  let start = '2000-01-01';
+  let end = '2099-12-31';
+
+  if (statsPeriod === 'day') {
+    start = statsFilterDate;
+    end = statsFilterDate;
+  } else if (statsPeriod === 'week') {
+    start = getMonday(statsFilterDate);
+    end = getSunday(statsFilterDate);
+  } else if (statsPeriod === 'month') {
+    start = getMonthStart(statsFilterDate);
+    end = getMonthEnd(statsFilterDate);
+  } else if (statsPeriod === 'year') {
+     start = getYearStart(statsFilterDate);
+     end = getYearEnd(statsFilterDate);
+  }
+
+  let gross = 0, orders = 0, deliveries = 0;
+  db.income.forEach(it => {
+     if(it.date >= start && it.date <= end) {
+        gross += Number(it.amount) || 0;
+        if(it.type === 'Заказ') { orders++; deliveries += Number(it.deliveries) || 1; }
+     }
+  });
+
+  let otherExp = 0;
+  db.expenses.forEach(it => {
+     if(it.date >= start && it.date <= end) otherExp += Number(it.amount) || 0;
+  });
+
+  let hours = 0;
+  const dates = new Set([...Object.keys(db.hours), ...db.income.map(i=>i.date), ...db.schedule.map(s=>s.date)]);
+  dates.forEach(d => {
+     if(d >= start && d <= end) hours += getLiveHours(d).total;
+  });
+
+  const taxRate = Number(db.settings.taxRate) || 0;
+  const taxAmount = Math.round(gross * taxRate / 100);
+  const clean = gross - otherExp - taxAmount;
+
+  const avgRate = hours > 0 ? Math.round(clean / hours) : 0;
+  const avgOrder = orders > 0 ? Math.round(gross / orders) : 0;
+
+  document.getElementById('general-stats-card').innerHTML = `
+    <div class="stat"><span class="k">Доход (валовый)</span><span class="v">${gross} ₽</span></div>
+    <div class="stat"><span class="k">Прочие расходы</span><span class="v">${otherExp} ₽</span></div>
+    <div class="stat"><span class="k" style="color:var(--red)">Налог (${taxRate}%)</span><span class="v" style="color:var(--red)">${taxAmount} ₽</span></div>
+    <div class="stat"><span class="k" style="color:var(--green); font-weight:700">Чистыми (на руки)</span><span class="v" style="color:var(--green); font-size:18px">${clean} ₽</span></div>
+    <div class="stat"><span class="k">Заказы / Вручения / Часы</span><span class="v">${orders} / ${deliveries} / ${Math.round(hours*10)/10}ч</span></div>
+    <div class="stat"><span class="k" style="color:var(--eda); font-weight:700">Ставка в час</span><span class="v" style="color:var(--eda)">${avgRate} ₽/ч</span></div>
+    <div class="stat"><span class="k">Средний доход за заказ</span><span class="v">${avgOrder} ₽</span></div>
+  `;
 }
 
 /* ---------- MAIN STATS RENDERER ---------- */
@@ -935,119 +1422,52 @@ function renderStats(){
   renderRecords();
   renderPeriodCompare(); 
   renderAdvancedAnalysis();
-  
-  let gross=0, totalOrders=0, totalDeliveries=0, otherExp=0;
-  const byService={}; SERVICES.forEach(s=>byService[s]={total:0, orders:0, deliveries:0, base:0, bonus:0});
-  db.income.forEach(it=>{
-    const amt = Number(it.amount)||0; const deliv = Number(it.deliveries)||1; gross += amt; const s=it.service;
-    if(!byService[s]) byService[s]={total:0, orders:0, deliveries:0, base:0, bonus:0};
-    byService[s].total += amt;
-    if(it.type==='Заказ'){ byService[s].orders++; byService[s].deliveries += deliv; byService[s].base += amt; totalOrders++; totalDeliveries += deliv; }
-    else if(it.type==='Бонус') byService[s].bonus += amt;
-  });
-  db.expenses.forEach(e=>otherExp += Number(e.amount)||0);
-  
-  let totalHoursOverall = 0; const allDates = new Set([...Object.keys(db.hours), ...db.income.map(i=>i.date), ...db.schedule.map(s=>s.date)]);
-  allDates.forEach(d => { if (d) totalHoursOverall += getLiveHours(d).total; });
+  renderStoreAnalysis();
+  renderGeneralStats();
 
-  const taxRate = Number(db.settings.taxRate) || 0;
-  const taxAmount = Math.round(gross * taxRate / 100);
-  const clean = gross - otherExp - taxAmount;
-
-  const set=(id,val)=>{ document.getElementById(id).textContent=val; };
-  set('st-gross', gross+' ₽'); 
-  set('st-other', otherExp+' ₽'); 
-  set('st-tax-percent', taxRate);
-  set('st-tax', taxAmount+' ₽');
-  set('st-clean', clean+' ₽');
-  
-  document.getElementById('st-clean').style.color = clean>=0 ? 'var(--green)' : 'var(--red)';
-  set('st-orders', `${totalOrders} / ${totalDeliveries} / ${Math.round(totalHoursOverall*10)/10}ч`);
-  set('st-rate', (totalHoursOverall>0?Math.round(clean/totalHoursOverall):0)+' ₽/ч');
-  set('st-avg', (totalOrders>0?Math.round(gross/totalOrders):0)+' ₽');
-
-  /* --- УМНЫЙ АНАЛИЗ НА НЕДЕЛЮ --- */
+  /* --- УМНЫЙ АНАЛИЗ ПО 3 КАТЕГОРИЯМ --- */
   const aggEl = document.getElementById('agg-analysis');
+  const totalDeliveries = db.income.filter(i => i.type === 'Заказ').reduce((sum, i) => sum + (Number(i.deliveries)||1), 0);
+
   if (totalDeliveries === 0) {
     aggEl.innerHTML = '<div class="empty">Добавь заказы, чтобы увидеть анализ</div>';
   } else {
-    const today = todayStr();
-    const tomorrow = tomorrowStr();
-    const slotToday = db.schedule.find(s => s.date === today && s.endTime > nowTimeStr());
-    const slotTomorrow = db.schedule.find(s => s.date === tomorrow);
-    
-    const weekStart = addDays(today, -7);
-    const weekEnd = today;
-    
-    let x5WeekIncome = 0, x5WeekHours = 0;
-    db.income.forEach(it => { if (it.service === 'X5 Слот' && it.date >= weekStart && it.date <= weekEnd) x5WeekIncome += Number(it.amount) || 0; });
-    db.schedule.forEach(s => {
-      if (s.service === 'X5 Слот' && s.date >= weekStart && s.date <= weekEnd) {
-        const [sh, sm] = s.startTime.split(':').map(Number); const [eh, em] = s.endTime.split(':').map(Number);
-        x5WeekHours += (eh * 60 + em - (sh * 60 + sm)) / 60;
-      }
-    });
-    let x5HourRate = x5WeekHours > 0 ? (x5WeekIncome / x5WeekHours) : 0;
-
-    let edaWeekIncome = 0, edaWeekHours = 0;
-    db.income.forEach(it => { if (it.service === 'Я.Еда' && it.date >= weekStart && it.date <= weekEnd) edaWeekIncome += Number(it.amount) || 0; });
-    db.schedule.forEach(s => {
-      if (s.service === 'Я.Еда' && s.date >= weekStart && s.date <= weekEnd) {
-        const [sh, sm] = s.startTime.split(':').map(Number); const [eh, em] = s.endTime.split(':').map(Number);
-        edaWeekHours += (eh * 60 + em - (sh * 60 + sm)) / 60;
-      }
-    });
-    let edaHourRate = edaWeekHours > 0 ? (edaWeekIncome / edaWeekHours) : 0;
-
-    let dostWeekIncome = 0, dostWeekHours = 0;
-    db.income.forEach(it => { if (it.service === 'Я.Доставка' && it.date >= weekStart && it.date <= weekEnd) dostWeekIncome += Number(it.amount) || 0; });
-    db.schedule.forEach(s => {
-      if (s.service === 'Я.Доставка' && s.date >= weekStart && s.date <= weekEnd) {
-        const [sh, sm] = s.startTime.split(':').map(Number); const [eh, em] = s.endTime.split(':').map(Number);
-        dostWeekHours += (eh * 60 + em - (sh * 60 + sm)) / 60;
-      }
-    });
-    let dostHourRate = dostWeekHours > 0 ? (dostWeekIncome / dostWeekHours) : 0;
-
-    let edaBonusPerHour = 0;
-    let edaY = getGoalProgress('Я.Еда', today);
-    let edaP = getGoalProgress('Я.Еда_Парк', today);
-    if (edaY && edaY.isActive && edaY.left > 0 && edaHourRate > 0) {
-      const check = byService['Я.Еда'] ? byService['Я.Еда'].avgCheck || 150 : 150;
-      const extraDelivs = edaY.bonus / check;
-      edaBonusPerHour += (extraDelivs / Math.max(edaWeekHours, 1)) * 100; 
-    }
+    const weekStart = addDays(todayStr(), -7);
+    const weekEnd = todayStr();
+    const { rates } = getStatsForPeriod(weekStart, weekEnd);
 
     let options = [
-      { name: 'X5 Слот', rate: x5HourRate, color: 'var(--x5)' },
-      { name: 'Я.Еда', rate: edaHourRate + (edaBonusPerHour * 10), color: 'var(--eda)' },
-      { name: 'Я.Доставка', rate: dostHourRate + (dostHourRate * 0.1), color: 'var(--dost)' }
+      { name: 'X5 Слот', rate: rates.x5, color: 'var(--x5)' },
+      { name: 'Я.Еда', rate: rates.eda, color: 'var(--eda)' },
+      { name: 'Я.Доставка', rate: rates.dost, color: 'var(--dost)' }
     ].filter(o => o.rate > 0).sort((a,b) => b.rate - a.rate);
 
-    let bestStr = options.length > 0 ? options[0].name : 'X5 Слот';
+    let bestStr = options.length > 0 ? options[0].name : 'Нет данных';
     let bestRate = options.length > 0 ? Math.round(options[0].rate) : 0;
 
     let html = `
       <div style="background:var(--card2); padding:14px; border-radius:12px; margin-bottom:12px; border:1px solid var(--green)">
-        <div style="font-size:12px; color:var(--green); text-transform:uppercase; font-weight:700; margin-bottom:8px;">🏆 Лучшее на этой неделе</div>
+        <div style="font-size:12px; color:var(--green); text-transform:uppercase; font-weight:700; margin-bottom:8px;">🏆 Лучшее по ставке в час</div>
         <div style="font-size:18px; font-weight:700; color:#fff; margin-bottom:4px;">${bestStr}</div>
         <div style="font-size:13px; color:var(--muted); margin-bottom:12px;">Средняя ставка: ~${bestRate} ₽/ч</div>
-        
-        <div style="font-size:12px; color:var(--muted); margin-bottom:4px;">Все варианты (₽/час):</div>
-        ${options.map(o => `<div class="battle-sub" style="padding:4px 0;"><span style="color:${o.color}">${o.name}</span> <b>~${Math.round(o.rate)} ₽</b></div>`).join('')}
-      </div>
     `;
 
-    html += `
-      <div style="background:rgba(168,85,247,0.1); border:1px solid var(--wb); padding:14px; border-radius:12px;">
-        <div style="font-size:12px; color:var(--wb); text-transform:uppercase; font-weight:700; margin-bottom:6px;">На сегодня / Завтра</div>
-        <div style="font-size:13px; line-height:1.5;">
-          <b>Сегодня:</b> ${slotToday ? 'У тебя есть слот.' : 'Слота нет.'}<br>
-          <b>Завтра:</b> ${slotTomorrow ? 'Слот забронирован.' : 'Слот не забронирован.'}
-        </div>
-      </div>
-    `;
-
+    if (options.length > 0) {
+      options.forEach(o => {
+        html += `
+          <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px; padding-bottom:6px; border-bottom:1px solid rgba(255,255,255,0.05);">
+            <span style="color:${o.color}">${o.name}</span>
+            <div style="text-align:right;">
+              <b style="color:var(--text)">~${Math.round(o.rate)} ₽/ч</b>
+            </div>
+          </div>
+        `;
+      });
+    } else {
+      html += `<div class="empty">Мало данных для сравнения. Поработай на слотах.</div>`;
+    }
+    
+    html += `</div>`;
     aggEl.innerHTML = html;
   }
 
@@ -1079,7 +1499,7 @@ function renderStats(){
   let nextMsg = dailyProg.nextTier ? `До цели (${dailyProg.nextTier.orders} вруч. / +${dailyProg.nextTier.bonus} ₽): осталось ${dailyProg.nextTier.orders - dailyProg.count} вруч.` : `Максимальная дневная цель достигнута!`;
   goalsHtml += `<div class="goal-card dost" style="border-left-color:var(--dost)"><div class="goal-title"><span>🟠 Я.Доставка (День)</span><span class="badge">${dailyProg.count} вруч.</span></div><div style="font-size:13px;margin-top:8px">${nextMsg}</div><div style="font-size:12px;color:var(--muted);margin-top:4px">Текущий бонус: ${dailyProg.currentTier.bonus} ₽</div></div>`;
   
-  goalsCont.innerHTML = goalsHtml;
+  goalsCont.innerHTML = goalsHtml || '<div class="empty">Добавь цели в разделе «Ещё», чтобы видеть прогресс</div>';
 }
 
 /* ---------- ADD / EDIT FUNCTIONS ---------- */
@@ -1127,6 +1547,9 @@ document.getElementById('btn-add-schedule').onclick=()=>{
   } else {
     db.schedule.push({id:uid(), date, startTime, endTime, service, store}); 
   }
+  
+  selectedCalDate = date; 
+  calViewDate = new Date(date);
   
   saveDB(); renderSchedule(); renderStats(); toast('Слот сохранен!');
 };
@@ -1230,6 +1653,7 @@ function renderAll(){ renderIncomeList(); renderExpensesList(); renderHoursList(
 (function init(){
   fillSelect('inc-service', SERVICES); fillSelect('inc-type', INC_TYPES); fillSelect('exp-cat', EXP_CATS); fillSelect('inc-store', X5_STORES, true); fillSelect('sch-store', X5_STORES);
   ['inc-date','exp-date','hrs-date','sch-date'].forEach(id=>document.getElementById(id).value=todayStr());
+  document.getElementById('stats-date').value = todayStr();
   fillSettingsForm(); toggleDeliveries(); toggleX5Fields(); toggleSchStore(); renderAll();
 })();
 </script>
