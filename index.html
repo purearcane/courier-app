@@ -299,8 +299,8 @@ details.record-accordion[open] summary { border-bottom: 1px solid var(--card); b
     <h2>План на день</h2>
     <div id="daily-goal-block"></div>
 
-    <h2>Прогноз по слотам (7 дней)</h2>
-    <div id="forecast-container"></div>
+    <h2>План на завтра</h2>
+    <div id="tomorrow-advice"></div>
 
     <h2>Динамика за 7 дней</h2>
     <div class="card" id="trend-7-days"></div>
@@ -478,15 +478,15 @@ function defaultDB(){
     income:[], expenses:[], hours:{}, schedule:[], 
     settings: { dailyGoal: 0, taxRate: 6 },
     goals: { 
-      'Я.Еда': {target:0, bonus:0, start:'', end:'', offset:0}, 
-      'Я.Доставка': {target:0, bonus:0, start:'', end:'', offset:0},
-      'Я.Еда_Парк': {target:0, bonus:0, start:'', end:'', offset:0}, 
-      'Я.Доставка_Парк': {target:0, bonus:0, start:'', end:'', offset:0}
+      'Я.Еда': {target:0, bonus:0, start:'', end:'', offset:0, isClaimed:false}, 
+      'Я.Доставка': {target:0, bonus:0, start:'', end:'', offset:0, isClaimed:false},
+      'Я.Еда_Парк': {target:0, bonus:0, start:'', end:'', offset:0, isClaimed:false}, 
+      'Я.Доставка_Парк': {target:0, bonus:0, start:'', end:'', offset:0, isClaimed:false}
     } 
   }; 
 }
 function normalize(d){
-  const normalizeGoal = (g) => ({ target: Number(g.target || g.orders || 0), bonus: Number(g.bonus || 0), start: g.start || '', end: g.end || '', offset: Number(g.offset || 0) });
+  const normalizeGoal = (g) => ({ target: Number(g.target || g.orders || 0), bonus: Number(g.bonus || 0), start: g.start || '', end: g.end || '', offset: Number(g.offset || 0), isClaimed: !!g.isClaimed });
   let income = Array.isArray(d.income) ? d.income.map(it => ({...it, store: it.store || ''})) : [];
   let schedule = Array.isArray(d.schedule) ? d.schedule.map(s => ({ id: s.id || uid(), date: s.date, startTime: s.startTime || s.time || '09:00', endTime: s.endTime || '14:00', service: s.service || 'X5 Слот', store: s.store || '' })) : [];
   
@@ -882,137 +882,97 @@ function getStatsForPeriod(startStr, endStr) {
   return { stats, rates, delivRates };
 }
 
-/* ---------- FORECAST ---------- */
-function renderForecast() {
-  const el = document.getElementById('forecast-container');
-  const today = todayStr();
-  
-  const { rates, delivRates } = getStatsForPeriod('2000-01-01', addDays(today, -1));
-  
-  let finalRates = {
-    'X5 Слот': rates.x5 || 200,
-    'Я.Еда': rates.eda || 200,
-    'Я.Доставка': rates.dost || 200
-  };
-  let finalDelivRates = {
-    'X5 Слот': delivRates.x5 || 2.5,
-    'Я.Еда': delivRates.eda || 2.5,
-    'Я.Доставка': delivRates.dost || 2.5
-  };
-
-  let totalExpected = 0;
-  let hasSlots = false;
-  let html = '<div class="forecast-card">';
-  html += '<div class="forecast-title">Прогноз на 7 дней</div>';
-
-  for (let i = 0; i < 7; i++) {
-    const dateStr = addDays(today, i);
-    const daySlots = db.schedule.filter(s => s.date === dateStr);
+/* ---------- AUTO BONUSES ---------- */
+function checkAutoBonuses() {
+  let changed = false;
+  ['Я.Еда', 'Я.Доставка', 'Я.Еда_Парк', 'Я.Доставка_Парк'].forEach(k => {
+    const g = db.goals[k];
+    if (!g || !g.target) return;
     
-    let dateObj = new Date(dateStr);
-    let dayName = i === 0 ? 'Сегодня' : i === 1 ? 'Завтра' : ['Вс','Пн','Вт','Ср','Чт','Пт','Сб'][dateObj.getDay()];
+    const evalDate = (todayStr() > g.end) ? g.end : todayStr();
+    const prog = getGoalProgress(k, evalDate);
     
-    if (daySlots.length > 0) {
-      hasSlots = true;
-      let dayBaseIncome = 0;
-      let dayExpectedBonus = 0;
-      let dayDetails = [];
-
-      daySlots.forEach(slot => {
-        const [sh, sm] = slot.startTime.split(':').map(Number);
-        const [eh, em] = slot.endTime.split(':').map(Number);
-        const hours = (eh * 60 + em - (sh * 60 + sm)) / 60;
-        
-        const rate = finalRates[slot.service] || 200;
-        const base = Math.round(hours * rate);
-        dayBaseIncome += base;
-
-        const estDelivs = hours * (finalDelivRates[slot.service] || 2.5);
-
-        let slotBonus = 0;
-        
-        let yGoal = getGoalProgress(slot.service, dateStr);
-        if (yGoal && yGoal.isActive && yGoal.left > 0) {
-            let bonusPerD = yGoal.bonus / yGoal.target;
-            let willDo = Math.min(yGoal.left, estDelivs);
-            slotBonus += willDo * bonusPerD;
-        }
-        
-        let pGoal = getGoalProgress(slot.service + '_Парк', dateStr);
-        if (pGoal && pGoal.isActive && pGoal.left > 0) {
-            let bonusPerD = pGoal.bonus / pGoal.target;
-            let willDo = Math.min(pGoal.left, estDelivs);
-            slotBonus += willDo * bonusPerD;
-        }
-
-        if (slot.service === 'Я.Доставка') {
-            let dayEstDostHours = 0;
-            daySlots.filter(x => x.service === 'Я.Доставка').forEach(x => {
-                dayEstDostHours += (Number(x.endTime.split(':')[0])*60 + Number(x.endTime.split(':')[1]) - (Number(x.startTime.split(':')[0])*60 + Number(x.startTime.split(':')[1]))) / 60;
-            });
-            let estDostDelivs = dayEstDostHours * (finalDelivRates['Я.Доставка'] || 2.5);
-            
-            let doneDost = 0;
-            db.income.forEach(it => {
-                if (it.date === dateStr && it.service === 'Я.Доставка' && it.type === 'Заказ') doneDost += Number(it.deliveries) || 1;
-            });
-
-            let projTotal = doneDost + Math.round(estDostDelivs);
-            let projBonus = 0;
-            for (let t of DOST_DAILY_TIERS) { if (projTotal >= t.orders) projBonus = t.bonus; }
-            let currBonus = 0;
-            for (let t of DOST_DAILY_TIERS) { if (doneDost >= t.orders) currBonus = t.bonus; }
-            slotBonus += Math.max(0, projBonus - currBonus);
-        }
-
-        dayExpectedBonus += Math.round(slotBonus);
-        dayDetails.push({ name: slot.service, time: `${slot.startTime}-${slot.endTime}`, base: base, bonus: Math.round(slotBonus) });
+    if (prog && prog.totalDone >= prog.target) {
+      const baseService = k.includes('Еда') ? 'Я.Еда' : 'Я.Доставка';
+      db.income.push({
+        id: uid(),
+        date: todayStr(),
+        time: nowTimeStr(),
+        service: baseService,
+        type: 'Бонус',
+        amount: g.bonus,
+        deliveries: 0,
+        note: 'Авто-бонус за выполнение цели',
+        store: ''
       });
-
-      totalExpected += dayBaseIncome + dayExpectedBonus;
-
-      html += `<div style="margin-bottom:12px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px; border-left:4px solid var(--birja)">
-          <div style="font-weight:700; margin-bottom:6px;">${dayName} (${dateStr.substring(5)})</div>`;
-
-      dayDetails.forEach(d => {
-          html += `<div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;">
-              <span style="color:var(--muted)">${d.name} (${d.time})</span>
-              <span><b>~${d.base} ₽</b> ${d.bonus > 0 ? `<span style="color:var(--green)">+${d.bonus} бонус</span>` : ''}</span>
-          </div>`;
-      });
-
-      let dayTotal = dayBaseIncome + dayExpectedBonus;
-      html += `<div style="font-size:11px; color:var(--green); text-align:right; margin-top:2px;">Итого: ~${dayTotal} ₽</div>`;
-      html += `</div>`;
-    } else {
-      let tips = [];
-      ['Я.Еда', 'Я.Доставка'].forEach(s => {
-          let yG = getGoalProgress(s, dateStr);
-          if (yG && yG.isActive && yG.left > 0) tips.push(`До цели ${s} осталось ${yG.left} вруч. (бонус ${yG.bonus} ₽)`);
-          let pG = getGoalProgress(s + '_Парк', dateStr);
-          if (pG && pG.isActive && pG.left > 0) tips.push(`До цели ${s} (Парк) осталось ${pG.left} вруч. (бонус ${pG.bonus} ₽)`);
-      });
-
-      if (tips.length > 0) {
-          html += `<div style="margin-bottom:12px; background:rgba(250,204,21,0.05); padding:10px; border-radius:8px; border-left:4px solid var(--muted)">
-              <div style="font-weight:700; margin-bottom:4px;">${dayName} (${dateStr.substring(5)})</div>
-              <div style="font-size:12px; color:var(--muted); margin-bottom:4px;">Слотов нет. 💡 Но можно выйти на линии:</div>`;
-          tips.forEach(t => { html += `<div style="font-size:11px; color:var(--eda); margin-bottom:2px;">${t}</div>`; });
-          html += `</div>`;
-      }
+      
+      // Очищаем цель
+      g.target = 0;
+      g.bonus = 0;
+      g.start = '';
+      g.end = '';
+      g.offset = 0;
+      changed = true;
     }
+  });
+  if (changed) {
+    saveDB();
+    toast('Цель выполнена! Бонус добавлен в доход.');
   }
+}
 
-  if (!hasSlots && totalExpected === 0) {
-    html += `<div class="forecast-desc" style="text-align:center; padding:20px;">На ближайшие 7 дней нет слотов и активных целей.</div>`;
-  } else {
-    html += `<div style="margin-top:12px; padding-top:12px; border-top:1px solid rgba(255,255,255,0.1); display:flex; justify-content:space-between; align-items:center;">
-        <span style="color:var(--muted); font-size:13px;">Итого (с бонусами)</span>
-        <span style="font-size:20px; font-weight:700; color:var(--wb);">~ ${totalExpected} ₽</span>
-    </div>`;
+/* ---------- TOMORROW ADVICE ---------- */
+function renderTomorrowAdvice() {
+  const el = document.getElementById('tomorrow-advice');
+  const tomorrow = tomorrowStr();
+  
+  const weekStart = addDays(todayStr(), -7);
+  const { rates, delivRates } = getStatsForPeriod(weekStart, todayStr());
+  
+  let x5Rate = rates.x5 > 0 ? rates.x5 : 250;
+  let edaRate = rates.eda > 0 ? rates.eda : 200;
+  let dostRate = rates.dost > 0 ? rates.dost : 200;
+  
+  let edaGoal = getGoalProgress('Я.Еда', tomorrow) || getGoalProgress('Я.Еда_Парк', tomorrow);
+  let edaBonusPerHour = 0;
+  if (edaGoal && edaGoal.isActive && edaGoal.left > 0) {
+      edaBonusPerHour = (edaGoal.bonus / edaGoal.left) * (delivRates.eda || 2.5);
   }
-
-  html += '</div>';
+  
+  let dostGoal = getGoalProgress('Я.Доставка', tomorrow) || getGoalProgress('Я.Доставка_Парк', tomorrow);
+  let dostBonusPerHour = 0;
+  if (dostGoal && dostGoal.isActive && dostGoal.left > 0) {
+      dostBonusPerHour += (dostGoal.bonus / dostGoal.left) * (delivRates.dost || 2.5);
+  }
+  dostBonusPerHour += 50; // примерная прибавка от дневных целей
+  
+  let options = [
+      { name: 'X5 Слот', rate: x5Rate, bonus: 0, color: 'var(--x5)', desc: 'Стабильная ставка' },
+      { name: 'Я.Еда', rate: edaRate + edaBonusPerHour, bonus: edaBonusPerHour, color: 'var(--eda)', desc: edaBonusPerHour > 0 ? `+${Math.round(edaBonusPerHour)} ₽/ч за цели` : 'Без целей' },
+      { name: 'Я.Доставка', rate: dostRate + dostBonusPerHour, bonus: dostBonusPerHour, color: 'var(--dost)', desc: `+${Math.round(dostBonusPerHour)} ₽/ч за бонусы` }
+  ].sort((a,b) => b.rate - a.rate);
+  
+  let best = options[0];
+  
+  let html = `
+    <div style="background:rgba(34,197,94,0.1);border:1px solid var(--green);padding:14px;border-radius:12px">
+      <div style="font-size:12px;color:var(--green);font-weight:700;text-transform:uppercase;margin-bottom:8px">💡 Куда выйти завтра?</div>
+      <div style="font-size:18px;font-weight:700;color:#fff;margin-bottom:6px">${best.name}</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:12px">Ожидаемая ставка: <b>~${Math.round(best.rate)} ₽/ч</b></div>
+      
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Сравнение:</div>
+  `;
+  
+  options.forEach(o => {
+      html += `
+        <div style="display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+          <span style="color:${o.color}">${o.name} <span style="font-size:10px;color:var(--muted)">(${o.desc})</span></span>
+          <b style="color:var(--text)">~${Math.round(o.rate)} ₽/ч</b>
+        </div>
+      `;
+  });
+  
+  html += `</div>`;
   el.innerHTML = html;
 }
 
@@ -1286,7 +1246,6 @@ function renderStoreAnalysis() {
     storeData[s] = { income: 0, delivs: 0, hours: 0 };
   });
 
-  // 1. Считаем доход и вручения (ТОЛЬКО X5 Слот)
   db.income.forEach(it => {
      if (it.service === 'X5 Слот' && it.store && storeData[it.store]) {
         storeData[it.store].income += Number(it.amount) || 0;
@@ -1294,7 +1253,6 @@ function renderStoreAnalysis() {
      }
   });
 
-  // 2. Считаем часы (ТОЛЬКО из расписания слотов X5)
   db.schedule.forEach(s => {
      if (s.service === 'X5 Слот' && s.store && storeData[s.store]) {
         const [sh, sm] = s.startTime.split(':').map(Number); 
@@ -1303,7 +1261,6 @@ function renderStoreAnalysis() {
      }
   });
 
-  // 3. Сортируем
   let sortedStores = Object.keys(storeData).map(name => {
      const d = storeData[name];
      return {
@@ -1415,9 +1372,10 @@ function renderGeneralStats() {
 
 /* ---------- MAIN STATS RENDERER ---------- */
 function renderStats(){
+  checkAutoBonuses();
   renderTodayStats(); 
   renderDailyGoal();
-  renderForecast();
+  renderTomorrowAdvice();
   renderTrend7Days();
   renderRecords();
   renderPeriodCompare(); 
@@ -1601,11 +1559,11 @@ document.getElementById('btn-save-finance').onclick=()=>{
 };
 
 document.getElementById('btn-save-goals').onclick=()=>{
-  db.goals['Я.Еда'] = { target: parseInt(document.getElementById('goal-eda-ord').value)||0, bonus: parseFloat(document.getElementById('goal-eda-bon').value)||0, start: document.getElementById('goal-eda-start').value, end: document.getElementById('goal-eda-end').value, offset: parseInt(document.getElementById('goal-eda-offset').value)||0 };
-  db.goals['Я.Доставка'] = { target: parseInt(document.getElementById('goal-dost-ord').value)||0, bonus: parseFloat(document.getElementById('goal-dost-bon').value)||0, start: document.getElementById('goal-dost-start').value, end: document.getElementById('goal-dost-end').value, offset: parseInt(document.getElementById('goal-dost-offset').value)||0 };
+  db.goals['Я.Еда'] = { target: parseInt(document.getElementById('goal-eda-ord').value)||0, bonus: parseFloat(document.getElementById('goal-eda-bon').value)||0, start: document.getElementById('goal-eda-start').value, end: document.getElementById('goal-eda-end').value, offset: parseInt(document.getElementById('goal-eda-offset').value)||0, isClaimed: false };
+  db.goals['Я.Доставка'] = { target: parseInt(document.getElementById('goal-dost-ord').value)||0, bonus: parseFloat(document.getElementById('goal-dost-bon').value)||0, start: document.getElementById('goal-dost-start').value, end: document.getElementById('goal-dost-end').value, offset: parseInt(document.getElementById('goal-dost-offset').value)||0, isClaimed: false };
   
-  db.goals['Я.Еда_Парк'] = { target: parseInt(document.getElementById('goal-eda-park-ord').value)||0, bonus: parseFloat(document.getElementById('goal-eda-park-bon').value)||0, start: document.getElementById('goal-eda-park-start').value, end: document.getElementById('goal-eda-park-end').value, offset: parseInt(document.getElementById('goal-eda-park-offset').value)||0 };
-  db.goals['Я.Доставка_Парк'] = { target: parseInt(document.getElementById('goal-dost-park-ord').value)||0, bonus: parseFloat(document.getElementById('goal-dost-park-bon').value)||0, start: document.getElementById('goal-dost-park-start').value, end: document.getElementById('goal-dost-park-end').value, offset: parseInt(document.getElementById('goal-dost-park-offset').value)||0 };
+  db.goals['Я.Еда_Парк'] = { target: parseInt(document.getElementById('goal-eda-park-ord').value)||0, bonus: parseFloat(document.getElementById('goal-eda-park-bon').value)||0, start: document.getElementById('goal-eda-park-start').value, end: document.getElementById('goal-eda-park-end').value, offset: parseInt(document.getElementById('goal-eda-park-offset').value)||0, isClaimed: false };
+  db.goals['Я.Доставка_Парк'] = { target: parseInt(document.getElementById('goal-dost-park-ord').value)||0, bonus: parseFloat(document.getElementById('goal-dost-park-bon').value)||0, start: document.getElementById('goal-dost-park-start').value, end: document.getElementById('goal-dost-park-end').value, offset: parseInt(document.getElementById('goal-dost-park-offset').value)||0, isClaimed: false };
   
   saveDB(); renderStats(); toast('Все цели сохранены!');
 };
